@@ -1,0 +1,113 @@
+{
+  "domain_id": "automotive_phone_appointment_v1",
+  "total_permutations": 2,
+  "required_primitives": {
+    "fxnA_dial": "f1c834d40a6a4027",
+    "fxnB_verify_human": "07f643d814efd566",
+    "fxnC_transmit_request": "717874ef2450c6ab",
+    "fxnE_confirm_slot": "256c03859c08078e",
+    "fxnD_voicemail_fallback": "958cb5374870ea24"
+  },
+  "required_edges": [
+    [
+      "fxnA_dial",
+      "fxnB_verify_human"
+    ],
+    [
+      "fxnB_verify_human",
+      "fxnC_transmit_request"
+    ],
+    [
+      "fxnB_verify_human",
+      "fxnD_voicemail_fallback"
+    ],
+    [
+      "fxnC_transmit_request",
+      "fxnE_confirm_slot"
+    ]
+  ],
+  "glyph_slots": {
+    "fxnA_dial": 0,
+    "fxnB_verify_human": 1,
+    "fxnC_transmit_request": 2,
+    "fxnE_confirm_slot": 3,
+    "fxnD_voicemail_fallback": 4
+  },
+  "primitive_params": {
+    "fxnA_dial": [
+      "shop_number"
+    ],
+    "fxnB_verify_human": [
+      "audio_frame"
+    ],
+    "fxnC_transmit_request": [
+      "payload"
+    ],
+    "fxnE_confirm_slot": [
+      "slot"
+    ],
+    "fxnD_voicemail_fallback": [
+      "payload"
+    ]
+  },
+  "primitive_invariants": {
+    "fxnA_dial": {
+      "min_ast_nodes": 4,
+      "forbid_bare_except": true,
+      "forbid_constant_return": true
+    },
+    "fxnB_verify_human": {
+      "min_ast_nodes": 4,
+      "forbid_bare_except": true,
+      "forbid_constant_return": true
+    },
+    "fxnC_transmit_request": {
+      "min_ast_nodes": 4,
+      "forbid_bare_except": true,
+      "forbid_constant_return": true
+    },
+    "fxnE_confirm_slot": {
+      "min_ast_nodes": 4,
+      "forbid_bare_except": true,
+      "forbid_constant_return": true
+    },
+    "fxnD_voicemail_fallback": {
+      "min_ast_nodes": 4,
+      "forbid_bare_except": true,
+      "forbid_constant_return": true
+    }
+  },
+  "permutations": [
+    {
+      "permutation_index": 0,
+      "is_edge_case": false,
+      "node_path": [
+        "n0",
+        "n1",
+        "n2",
+        "n3"
+      ],
+      "signal_vector": [
+        "f1c834d40a6a4027",
+        "07f643d814efd566",
+        "717874ef2450c6ab",
+        "256c03859c08078e"
+      ]
+    },
+    {
+      "permutation_index": 1,
+      "is_edge_case": true,
+      "node_path": [
+        "n0",
+        "n1",
+        "n_vm"
+      ],
+      "signal_vector": [
+        "f1c834d40a6a4027",
+        "07f643d814efd566",
+        "958cb5374870ea24"
+      ]
+    }
+  ],
+  "montage_status": "skipped"
+}

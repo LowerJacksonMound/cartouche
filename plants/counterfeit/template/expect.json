@@ -1,0 +1,1 @@
+{"sealed": false, "faults": ["template"], "details": ["HOLLOW_STUB"], "functions": ["fxnA_dial", "fxnB_verify_human", "fxnC_transmit_request", "fxnE_confirm_slot", "fxnD_voicemail_fallback"], "reason": "scan", "note": "Every signature, no body. Template: five hollow stubs."}

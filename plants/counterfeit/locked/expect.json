@@ -1,0 +1,1 @@
+{"sealed": false, "spec": "drifted", "faults": ["locked"], "details": ["INTENT"], "reason": "intent", "note": "Sealed code, but the request was edited after release: one phrase changed. Locked: the spec no longer hashes to the lock, so nothing is scanned."}

@@ -1,0 +1,130 @@
+{
+  "domain_id": "automotive_phone_appointment_v1",
+  "interaction": "phone_conversation",
+  "cartouche_capacity": 3,
+  "root_id": "n0",
+  "b_roll_atoms": {
+    "tok_dial": {
+      "phrase": "Dick's Automotive, how can I help you?",
+      "clip_path": "clips/tok_dial.mp4"
+    },
+    "tok_human": {
+      "phrase": "Yeah, this is Mike.",
+      "clip_path": "clips/tok_human.mp4"
+    },
+    "tok_payload": {
+      "phrase": "I need to book a Tuesday morning slot for a 1989 Lotus Esprit.",
+      "clip_path": "clips/tok_payload.mp4"
+    },
+    "tok_confirm": {
+      "phrase": "You're on the books for Tuesday at 9.",
+      "clip_path": "clips/tok_confirm.mp4"
+    },
+    "tok_vm": {
+      "phrase": "Please leave a message after the tone.",
+      "clip_path": "clips/tok_vm.mp4"
+    }
+  },
+  "nodes": {
+    "n0": {
+      "token_id": "tok_dial",
+      "primitive_fxn": "fxnA_dial",
+      "glyph_slot": 0,
+      "is_edge_case": false,
+      "branches": [
+        {
+          "target_node": "n1"
+        }
+      ]
+    },
+    "n1": {
+      "token_id": "tok_human",
+      "primitive_fxn": "fxnB_verify_human",
+      "glyph_slot": 1,
+      "is_edge_case": false,
+      "branches": [
+        {
+          "target_node": "n2"
+        },
+        {
+          "target_node": "n_vm"
+        }
+      ]
+    },
+    "n2": {
+      "token_id": "tok_payload",
+      "primitive_fxn": "fxnC_transmit_request",
+      "glyph_slot": 2,
+      "is_edge_case": false,
+      "branches": [
+        {
+          "target_node": "n3"
+        }
+      ]
+    },
+    "n3": {
+      "token_id": "tok_confirm",
+      "primitive_fxn": "fxnE_confirm_slot",
+      "glyph_slot": 3,
+      "is_edge_case": false,
+      "branches": []
+    },
+    "n_vm": {
+      "token_id": "tok_vm",
+      "primitive_fxn": "fxnD_voicemail_fallback",
+      "glyph_slot": 4,
+      "is_edge_case": true,
+      "branches": []
+    }
+  },
+  "primitive_params": {
+    "fxnA_dial": [
+      "shop_number"
+    ],
+    "fxnB_verify_human": [
+      "audio_frame"
+    ],
+    "fxnC_transmit_request": [
+      "payload"
+    ],
+    "fxnE_confirm_slot": [
+      "slot"
+    ],
+    "fxnD_voicemail_fallback": [
+      "payload"
+    ]
+  },
+  "primitive_invariants": {
+    "fxnA_dial": {
+      "min_ast_nodes": 4,
+      "forbid_bare_except": true,
+      "forbid_constant_return": true
+    },
+    "fxnB_verify_human": {
+      "min_ast_nodes": 4,
+      "forbid_bare_except": true,
+      "forbid_constant_return": true
+    },
+    "fxnC_transmit_request": {
+      "min_ast_nodes": 4,
+      "forbid_bare_except": true,
+      "forbid_constant_return": true
+    },
+    "fxnE_confirm_slot": {
+      "min_ast_nodes": 4,
+      "forbid_bare_except": true,
+      "forbid_constant_return": true
+    },
+    "fxnD_voicemail_fallback": {
+      "min_ast_nodes": 4,
+      "forbid_bare_except": true,
+      "forbid_constant_return": true
+    }
+  },
+  "parameters": {
+    "shop": "Dick's Automotive",
+    "caller": "Mike",
+    "vehicle": "1989 Lotus Esprit",
+    "window": "Tuesday morning"
+  }
+}

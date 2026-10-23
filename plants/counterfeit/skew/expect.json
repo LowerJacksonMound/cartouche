@@ -1,0 +1,1 @@
+{"sealed": false, "faults": ["skew"], "details": ["TOPOLOGY_BREAK"], "functions": ["fxnB_verify_human"], "reason": "scan", "note": "verify_human never reaches transmit_request. Skew: the edge is gone."}
