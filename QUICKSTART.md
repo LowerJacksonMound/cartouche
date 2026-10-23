@@ -10,7 +10,7 @@ the working folder shortened to `$W`.
 ## You need
 
 - a Mac
-- Python 3.10 or newer as `python3` on your PATH (no package to install)
+- Python 3.9 or newer as `python3` on your PATH. macOS ships 3.9.6 as `/usr/bin/python3`; nothing to install.
 - Claude Code installed (`claude` on your PATH) for the MCP part
 
 ## Set up

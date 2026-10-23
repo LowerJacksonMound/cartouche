@@ -8,11 +8,14 @@ version = "0.1.0"
 description = "Intent lock for AI-assisted builds: watch a clip per task, sign it, and seal the build only when the tree is the signed intent."
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.13"
+requires-python = ">=3.9"
 dependencies = []
 classifiers = [
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "Operating System :: MacOS",
 ]
 

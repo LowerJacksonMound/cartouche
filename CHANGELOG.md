@@ -13,5 +13,5 @@ All notable changes to Cartouche are recorded here. The format follows Keep a Ch
 - README, QUICKSTART, `install_cartouche_mcp.sh`, RELEASE_CHECKLIST with two dated passes.
 
 ### Known limits
-- Python targets only. macOS first.
+- Python targets only. macOS first. Runs on Python 3.9 or newer; selftest PASS on 3.9.6 (Apple), 3.10, 3.13, 3.14.
 - Reports; does not fix.

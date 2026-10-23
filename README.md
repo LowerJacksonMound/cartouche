@@ -33,7 +33,7 @@ re-lock.
 
 ## The four MCP tools
 
-One local stdio process, `cartouche-mcp.sh`. No port. No extra package. Python 3.10 or newer.
+One local stdio process, `cartouche-mcp.sh`. No port. No extra package. Python 3.9 or newer: the `python3` macOS ships (3.9.6) is enough, nothing to install.
 
 | Tool | One line | Refuses |
 |---|---|---|
