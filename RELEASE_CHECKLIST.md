@@ -77,3 +77,13 @@ edited after release.
 - [x] README.md / QUICKSTART.md re-run; pasted outputs are real.
 - [x] Signer's own run of all three commands: identical results.
 - [x] Registered with Claude Code (`install_cartouche_mcp.sh`), user scope.
+
+## Pass 2026-10-23, third (rung 0 of the release ladder: version control, license, packaging, fresh-Mac rehearsal)
+
+- [x] `git init`; first commit of 81 files. Excluded by `.gitignore`: `__pycache__`, `*.zip` (CARTOUCHE.zip), `.DS_Store`, `.env`, `*.fetch.json`, `/library/`, `/scratch/`.
+- [x] Secret scan before the first commit: no keys, tokens or passwords. Personal absolute paths removed from QUICKSTART (now `$CT`).
+- [x] `LICENSE`: PolyForm Noncommercial 1.0.0, canonical SPDX text, licensor block. README carries the license paragraph.
+- [x] `pyproject.toml` (`cartouche-mcp` 0.1.0, scripts `cartouche` and `cartouche-mcp`, no dependencies) and `CHANGELOG.md` 0.1.0.
+- [x] Python floor set to 3.9 from measurement: `cartouche selftest` PASS on Apple 3.9.6, 3.10, 3.13, 3.14. Wrapper refuses below 3.9 with a message; install script and docs say 3.9.
+- [x] Fresh-Mac rehearsal: clone of the committed tree, `env -i`, PATH limited to Apple's `/usr/bin:/bin`, empty HOME, no brew/uv. `python3` = 3.9.6. `selftest PASS`, `plants 9 PASS / 0 FAIL`, `install --print` prints the registration line, wrapper answers `tools/list` over stdio with the four tools. Nothing had to be installed.
+- [ ] Still to do for rung 0: the same rehearsal in a real second macOS user account, by a person following README only (rung 2 tester does this).
