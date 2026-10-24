@@ -92,6 +92,6 @@ edited after release.
 
 - [x] Private repo https://github.com/LowerJacksonMound/cartouche, branch `main`, tag `v0.1.0`, prerelease published with install, verify and known-limits notes. A clone of the tag passes `selftest` on Apple python3.
 
-## Pass 2026-10-23, rung 3
+## Pass 2026-10-23, rung 3 (prepared)
 
-- [x] Full-history scan clean (secrets, personal paths); author email rewritten to the GitHub no-reply address before the flip. Repository made PUBLIC. Rung 2 (invited testers) skipped by decision: the prerelease label and issue tracker take its place.
+- [x] Full-history scan clean (secrets, personal paths); author email rewritten to the GitHub no-reply address before the flip. Repository READY for public: the flip itself is the owner's action (`gh repo edit --visibility public --accept-visibility-change-consequences`), recorded below when done. Rung 2 (invited testers) skipped by decision: the prerelease label and issue tracker take its place.
