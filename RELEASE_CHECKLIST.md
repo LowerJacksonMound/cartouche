@@ -87,3 +87,7 @@ edited after release.
 - [x] Python floor set to 3.9 from measurement: `cartouche selftest` PASS on Apple 3.9.6, 3.10, 3.13, 3.14. Wrapper refuses below 3.9 with a message; install script and docs say 3.9.
 - [x] Fresh-Mac rehearsal: clone of the committed tree, `env -i`, PATH limited to Apple's `/usr/bin:/bin`, empty HOME, no brew/uv. `python3` = 3.9.6. `selftest PASS`, `plants 9 PASS / 0 FAIL`, `install --print` prints the registration line, wrapper answers `tools/list` over stdio with the four tools. Nothing had to be installed.
 - [ ] Still to do for rung 0: the same rehearsal in a real second macOS user account, by a person following README only (rung 2 tester does this).
+
+## Pass 2026-10-23, rung 1
+
+- [x] Private repo https://github.com/LowerJacksonMound/cartouche, branch `main`, tag `v0.1.0`, prerelease published with install, verify and known-limits notes. A clone of the tag passes `selftest` on Apple python3.
