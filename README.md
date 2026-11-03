@@ -114,8 +114,32 @@ The unit tests are `python3 -m unittest discover -s cartouche/tests` from this f
 
 ## Install
 
-`QUICKSTART.md` walks the fixture spec end to end. `install_cartouche_mcp.sh` registers the MCP server
-with Claude Code at user scope; `--print` shows the command without running it.
+Nothing to install beyond Python 3.9. Clone or copy this folder, then either
+
+    pip install -e .                      # gives you the `cartouche` command used in this README
+
+or, with no install at all, run every `cartouche ...` line here as `python3 -m cartouche ...` with
+`PYTHONPATH` set to this folder (that is how `QUICKSTART.md` runs it):
+
+    export PYTHONPATH=/absolute/path/to/MCP-CARTOUCHE
+    python3 -m cartouche page --request /absolute/path/to/spec.json
+
+To drive it from Claude Code, register the MCP server once, at user scope:
+
+    bash install_cartouche_mcp.sh         # --print shows the `claude mcp add-json` line without running it
+
+A Claude Code session starts that server once and does not reload it. After any edit to this folder, run
+`/mcp` in the session and reconnect `cartouche` (or start a new session) before trusting a verdict.
+
+The page: `python3 -m cartouche page --request SPEC` prints `page=http://127.0.0.1:8790/` and serves it until you
+stop it; `--port N` moves it. Every `ct_watch`, `ct_look`, `ct_hold` and `ct_stop` answer carries a one-sentence
+`summary` ("Sealed: every locked line and edge is in build.", "Not sealed: 2 issues: ...") beside the rows.
+
+Replacing a release: if the chart is saved again after release (another `ct_chart` on the same spec), the page
+sets the old lock aside as `build_input.<sha8>.json`, keeps every signature, and goes back to the release step;
+press release once more and the new lock is written. `ct_watch` on the old lock refuses with `locked`.
+
+`QUICKSTART.md` walks the fixture spec end to end.
 
 ## Law docs
 
