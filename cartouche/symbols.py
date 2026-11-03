@@ -115,7 +115,7 @@ def assign_symbol(locks: list[str]) -> dict[str, Any]:
     holds = len(locks)
     row = [sign for sign in SIGNS if sign["holds"] == holds]
     if not row:
-        raise ValueError(f"no cartouche symbol holds {holds} functions")
+        raise ValueError(f"no cartouche symbol holds {holds} functions: signs hold 1 to 3, so cartouche_capacity is at most 3")
     payload = f"{holds}::" + "::".join(sorted(locks))
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
     sign = row[int(digest[:8], 16) % len(row)]

@@ -55,6 +55,20 @@ class ASTTopologyExtractor(ast.NodeVisitor):
         constant_values = [r.value.value for r in returns if isinstance(r.value, ast.Constant)]
         all_constant = bool(returns) and len(constant_values) == len(returns)
         tests = [n.test for n in sub_nodes if isinstance(n, (ast.If, ast.IfExp, ast.While))]
+
+        def type_check_only(t: ast.expr) -> bool:
+            """`isinstance(x, T)` / `type(x) is T`, possibly negated: a check on the kind of input, not its value.
+            A hollow body hides behind one (seen 2026-11-03, a counterfeit refuse_repeat)."""
+            while isinstance(t, ast.UnaryOp) and isinstance(t.op, ast.Not):
+                t = t.operand
+            if isinstance(t, ast.Call) and isinstance(t.func, ast.Name) and t.func.id == "isinstance":
+                return True
+            return isinstance(t, ast.Compare) and any(
+                isinstance(c, ast.Call) and isinstance(c.func, ast.Name) and c.func.id == "type"
+                for c in [t.left, *t.comparators]
+            )
+
+        tests = [t for t in tests if not type_check_only(t)]
         reads_param = any(
             isinstance(m, ast.Name) and m.id in arg_names for t in tests for m in ast.walk(t)
         ) or any(
@@ -360,11 +374,26 @@ class CartoucheScanner:
                     )
 
         broken_edges: list[list[str]] = []
+
+        def reaches(start: str, goal: str) -> bool:
+            """goal is called from start, directly or through other functions of this build."""
+            seen, stack = set(), [start]
+            while stack:
+                here = stack.pop()
+                for a, b in extractor.call_edges:
+                    if a == here and b not in seen:
+                        if b == goal:
+                            return True
+                        seen.add(b)
+                        stack.append(b)
+            return False
+
         for caller, callee in self.cartouche["required_edges"]:
             direct_edge = (caller, callee) in extractor.call_edges
+            # "Sequenced with": one function calls the caller and reaches the callee, directly or through the
+            # turn function that owns the loop (owner ruling 2026-11-03: start_round -> take_turn -> ask_question).
             orchestrated_edge = any(
-                (orch, caller) in extractor.call_edges
-                and (orch, callee) in extractor.call_edges
+                (orch, caller) in extractor.call_edges and reaches(orch, callee)
                 for orch in extractor.defined_functions
             )
             if direct_edge or orchestrated_edge:

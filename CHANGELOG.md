@@ -17,6 +17,15 @@ All notable changes to Cartouche are recorded here. The format follows Keep a Ch
   returns one of several labels after testing its arguments is a real function. Owner ruling 2026-11-03, on
   the first joint build with Closer: `fxnB_verify_human` was accepted by Closer and called a template here.
   A raise guarded by a test on a parameter counts as an outcome too (`answer_line`, the pharmacy build).
+- A required edge is also met when one function calls the first end and reaches the second through other
+  functions of the build (`start_round` -> `take_turn` -> `ask_question`, the quiz build). Before, only a
+  direct call from the same orchestrator counted.
+- A guard that only checks the kind of a parameter (`isinstance`, `type(x) is`) no longer counts as a decision on
+  the input, so a hollow body behind one is a constant-return template again (a counterfeit `refuse_repeat`,
+  the quiz run). A guard on the value (`'phone' not in caller`) still counts.
+- `ct_search` moments: a full match means every content word in the order asked; the same words scattered score
+  0.75 at most. One content word is refused as too few (`"not quite"`, `"already said that"` scored 1.00 on
+  football commentary). The small-word list grew to cover the words that caused it.
 - `ct_search` (YouTube) over-fetches three ids per hit wanted, drops any title written in another script before
   fetching anything, reads subtitles for the rest, and returns the hits best spoken moment first. The unsubtitled
   trail behind them in YouTube's order, each marked. Measured on one query: 30 listed, 1 dropped by title, the ten

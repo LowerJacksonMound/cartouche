@@ -702,7 +702,10 @@ def search(
 
 _CUE = re.compile(r"(\d+):(\d\d):(\d\d)\.(\d+) --> (\d+):(\d\d):(\d\d)\.(\d+)")
 _WORD = re.compile(r"[a-z0-9']+")
-_SMALL = set("a an and are at be but by do for from have i i'm in is it it's me my of on or so that the then this to was we what with you you're your".split())
+_SMALL = set(("a an and are at be but by do for from have i i'm in is it it's me my of on or so that the then this to was we "
+              "what with you you're your not quite that's one said say already just like get got go going can could would "
+              "should will right okay ok yeah yes no now up down out off here there they them he she his her its our "
+              "if as about into over again more very really all any some").split())
 
 
 def parse_vtt(text: str) -> list[dict[str, Any]]:
@@ -732,14 +735,28 @@ def parse_vtt(text: str) -> list[dict[str, Any]]:
     return cues
 
 
-def _score(cues: list[dict[str, Any]], want: set[str], limit: int) -> list[dict[str, Any]]:
+def _in_order(words: list[str], order: list[str]) -> bool:
+    """The wanted words occur in the window in the order they were asked for (other words between them allowed)."""
+    i = 0
+    for w in words:
+        if i < len(order) and w == order[i]:
+            i += 1
+    return i == len(order)
+
+
+def _score(cues: list[dict[str, Any]], want: set[str], limit: int, order: list[str] | None = None) -> list[dict[str, Any]]:
     scored = []
     for k, cue in enumerate(cues):
         window = " ".join(c["text"] for c in cues[k:k + 2]).lower()
-        hit = want & set(_WORD.findall(window))
+        found = _WORD.findall(window)
+        hit = want & set(found)
         own = want & set(_WORD.findall(cue["text"].lower()))  # the moment starts where the words start
         if own and len(hit) / len(want) >= 0.34:
-            scored.append((len(hit) / len(want), cue))
+            score = len(hit) / len(want)
+            # A full score is the line as said: every word, in order. The same words scattered score 0.75 at most.
+            if score == 1.0 and order and not _in_order(found, order):
+                score = 0.75
+            scored.append((score, cue))
     scored.sort(key=lambda pair: (-pair[0], pair[1]["start"]))
     return [{"start": cue["start"], "text": cue["text"], "match": round(score, 2)} for score, cue in scored[:limit]]
 
@@ -748,9 +765,11 @@ def spoken_many(urls: list[str], words: str, limit: int = 3) -> dict[str, dict[s
     """Where the words are said in each video, from its subtitles. One yt-dlp run reads a list of URLs
     (-a), so every video's subtitles come down together. Keyed by URL."""
 
-    want = set(_WORD.findall(words.lower())) - _SMALL
-    if not want:
-        return {u: {"moments": [], "reason": "no words to look for"} for u in urls}
+    order = [w for w in _WORD.findall(words.lower()) if w not in _SMALL]
+    want = set(order)
+    if len(want) < 2:
+        # One content word matches everywhere ("quite", "score"): ask for three or four words that carry the line.
+        return {u: {"moments": [], "reason": f"too few words to look for ({sorted(want)}); give 3-4 content words"} for u in urls}
     ids = {u: (re.search(r"[?&]v=([\w-]{11})", u) or re.search(r"([\w-]{11})$", u)) for u in urls}
     found: dict[str, dict[str, Any]] = {}
     with tempfile.TemporaryDirectory() as tmp:
@@ -777,7 +796,7 @@ def spoken_many(urls: list[str], words: str, limit: int = 3) -> dict[str, dict[s
                 found[url] = {"moments": [], "reason": "rate limited by YouTube (HTTP 429)" if limited else "no English subtitles"}
                 continue
             cues = parse_vtt(vtt[0].read_text(encoding="utf-8", errors="replace"))
-            found[url] = {"moments": _score(cues, want, limit), "cues": len(cues)}
+            found[url] = {"moments": _score(cues, want, limit, order), "cues": len(cues)}
     return found
 
 

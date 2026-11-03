@@ -375,3 +375,54 @@ class ConstantReturnRule(unittest.TestCase):
         src = "def f(caller):\n    if 'phone' not in caller:\n        raise ValueError('phone')\n    return 'Corner Drug refill line.'\n"
         self.assertFalse(self.info(src)["only_constant_returns"])
         self.assertTrue(self.info("def f(x):\n    if False:\n        raise ValueError('x')\n    return 'a'\n")["only_constant_returns"])
+
+
+class TopologyThroughAnOrchestrator(unittest.TestCase):
+    def test_edge_holds_when_the_orchestrator_reaches_the_callee_through_another_function(self):
+        import json, tempfile
+        from pathlib import Path
+        from cartouche.cartouche_scanner import ASTTopologyExtractor
+        src = ("def welcome(p):\n    return 'hi ' + p\n\ndef ask(q):\n    return 'q' + q\n\n"
+               "def turn(q):\n    return ask(q)\n\ndef start(p, q):\n    return [welcome(p), turn(q)]\n")
+        import ast
+        ex = ASTTopologyExtractor(); ex.visit(ast.parse(src))
+        self.assertIn(("start", "welcome"), ex.call_edges)
+        self.assertNotIn(("start", "ask"), ex.call_edges)  # not direct: the rule must walk through turn
+        # the same walk the scanner does
+        def reaches(start, goal):
+            seen, stack = set(), [start]
+            while stack:
+                here = stack.pop()
+                for a, b in ex.call_edges:
+                    if a == here and b not in seen:
+                        if b == goal: return True
+                        seen.add(b); stack.append(b)
+            return False
+        self.assertTrue(any((o, "welcome") in ex.call_edges and reaches(o, "ask") for o in ex.defined_functions))
+
+
+class ScorerOrderAndSmallWords(unittest.TestCase):
+    def test_scattered_words_do_not_score_full(self):
+        cues = [{"start": 1.0, "text": "we have already said that Stoke City"}, {"start": 3.0, "text": "one more thing"}]
+        order = ["already", "said", "one"]
+        full = gather._score(cues, set(order), 3, order)
+        self.assertEqual(full[0]["match"], 1.0)  # in order across the window
+        order2 = ["one", "said", "already"]
+        self.assertEqual(gather._score(cues, set(order2), 3, order2)[0]["match"], 0.75)
+
+    def test_one_content_word_is_refused(self):
+        found = gather.spoken_many.__wrapped__ if hasattr(gather.spoken_many, "__wrapped__") else None
+        order = [w for w in gather._WORD.findall("not quite") if w not in gather._SMALL]
+        self.assertEqual(order, [])
+        order = [w for w in gather._WORD.findall("let me get the pharmacist") if w not in gather._SMALL]
+        self.assertEqual(order, ["let", "pharmacist"])
+
+
+class TypeCheckIsNotADecision(ConstantReturnRule):
+    def test_isinstance_guard_before_one_literal_is_degenerate(self):
+        src = "def f(quiz, answer):\n    if not isinstance(answer, str):\n        raise ValueError('x')\n    return 'You already said that one.'\n"
+        self.assertTrue(self.info(src)["only_constant_returns"])
+
+    def test_value_guard_before_one_literal_is_not(self):
+        src = "def f(caller):\n    if 'phone' not in caller:\n        raise ValueError('phone')\n    return 'Corner Drug refill line.'\n"
+        self.assertFalse(self.info(src)["only_constant_returns"])
