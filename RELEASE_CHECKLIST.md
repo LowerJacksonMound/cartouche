@@ -4,6 +4,10 @@ Cartouche's release bar, in the same shape as CLOSER_THE_APP/RELEASE_CHECKLIST.m
 that passes every line below on the day, recorded as a dated pass. Nothing about a rule, a hash, a lock,
 a CLI subcommand or an MCP tool changes in a release pass; a pass proves and packages what runs.
 
+## Quiet run (2026-11-03)
+
+- [ ] Quiet run: three new apps of different kinds, fresh session, both gates, zero code changes to this tree. "Release" means first that the app works and runs as expected (Closer accepts, the app is run by hand), and second the signed form (Cartouche sealed). Names and dates here; ledger in ~/ct-live/QUIET_RUN.md.
+
 ## Any change
 
 - [ ] `python3 -m cartouche selftest` prints `cartouche: selftest PASS` and exits 0. It runs the unit tests,
