@@ -58,7 +58,6 @@ class Watch:
         self.contract_path = contract_path
         self.target = target_path
         looked = self._from_probe(probe, target_path)
-        looked["summary"] = summary_of(looked)
         looked["bound"] = True
         return looked
 
@@ -115,7 +114,7 @@ class Watch:
         return looked
 
     @staticmethod
-    def _from_probe(probe: dict[str, Any], target: Path) -> dict[str, Any]:
+    def _rows(probe: dict[str, Any], target: Path) -> dict[str, Any]:
         """Every answer names the same target, waiting or scanned or refused."""
 
         if probe.get("reason") == "unreleased":
@@ -166,7 +165,8 @@ class Watch:
         report = probe.get("scan") or {}
         waiting = bool(probe.get("waiting") or report.get("waiting"))
         issues = [] if waiting else issues_of(report)
-        return {
+        return (
+{
             "sealed": bool(probe.get("is_sealed")) and not issues,
             "waiting": waiting,
             "scanned": bool(probe.get("scanned")) and not waiting,
@@ -177,7 +177,13 @@ class Watch:
             "open": len(issues),
             "issues": issues,
         }
+        )
 
+    @staticmethod
+    def _from_probe(probe: dict[str, Any], target: Path) -> dict[str, Any]:
+        looked = Watch._rows(probe, target)
+        looked["summary"] = summary_of(looked)
+        return looked
 
 def summary_of(looked: dict[str, Any]) -> str:
     """One plain sentence a person can read without the issue rows or the run log."""
