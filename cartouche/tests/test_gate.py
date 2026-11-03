@@ -256,6 +256,41 @@ class RuleTests(unittest.TestCase):
         self.assertTrue(report["is_sealed"], report)
         self.assertEqual(report["broken_edges"], [])
 
+    def test_dispatch_table_loop_satisfies_heard_edge(self) -> None:
+        """A loop reads the next word and dispatches through a module-level table (the counter, 2026-11-03)."""
+        body = (
+            "def fxn_a(x):\n"
+            "    return step(x)\n"
+            "def fxn_b(x):\n"
+            "    return step(x)\n"
+            "_TABLE = {'a': fxn_a, 'b': fxn_b}\n"
+            "def run(words):\n"
+            "    out = []\n"
+            "    for w in words:\n"
+            "        out.append(_TABLE[w](w))\n"
+            "    return out\n"
+        )
+        track = {
+            "domain_id": "loop",
+            "required_primitives": {"fxn_a": "a", "fxn_b": "b"},
+            "required_edges": [["fxn_a", "fxn_b"], ["fxn_b", "fxn_a"]],
+            "heard_edges": [["fxn_a", "fxn_b", ["the user says b"]], ["fxn_b", "fxn_a", ["the user says a"]]],
+            "glyph_slots": {"fxn_a": 0, "fxn_b": 1},
+            "primitive_params": {"fxn_a": ["x"], "fxn_b": ["x"]},
+            "primitive_invariants": {},
+        }
+        master = CartoucheCompiler(track).compile_cartouche()
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "loop.py"
+            path.write_text(body, encoding="utf-8")
+            report = CartoucheScanner(master).scan_file(path)
+            self.assertTrue(report["is_sealed"], report)
+            self.assertEqual(report["broken_edges"], [])
+            # the same edges with no loop and no table are still broken: the stand-down is narrow
+            path.write_text(body.split("_TABLE")[0], encoding="utf-8")
+            report = CartoucheScanner(master).scan_file(path)
+        self.assertEqual(sorted(report["broken_edges"]), [["fxn_a", "fxn_b"], ["fxn_b", "fxn_a"]])
+
     def test_missing_params_bare_except_and_floor(self) -> None:
         track = signal_track()
         master = CartoucheCompiler(track).compile_cartouche()

@@ -20,6 +20,8 @@ The stitcher puts those hashes on the certified signal track, with the required 
 
 The lock is the hash of the signed signals. Approving a line does not move it.
 
+The scanner is a lock on names, parameters and order; behaviour is Closer's claims. Order is read from the call graph, and from two things the call graph does not show: a module-level dispatch table a function reads, and a loop that drives the order from what it hears. A heard edge whose two ends one loop-owning function reaches is satisfied (ruling 2026-11-03, the counter).
+
 ## What the lock is for
 
 Cartouche holds this lock from the request through the final tree. A scan compares an author agent's code to it. Residual `0.00` and a full bitmask means the tree is the locked intent. Anything else is an expectation miss. Cartouche reports that. It does not rewrite the lock to match the code.

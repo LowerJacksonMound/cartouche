@@ -25,7 +25,45 @@ class ASTTopologyExtractor(ast.NodeVisitor):
     def __init__(self) -> None:
         self.defined_functions: dict[str, dict[str, Any]] = {}
         self.call_edges: set[tuple[str, str]] = set()
+        # 2026-11-03 ruling (counter): a function named in a module-level table (dict, list, tuple, set) and read
+        # through that table from a function body is referenced by that function; a function owning a for or
+        # while loop drives its reachable functions in an order the call graph does not show.
+        self.loop_functions: set[str] = set()
+        self._name_loads: set[tuple[str, str]] = set()
+        self._module_tables: dict[str, set[str]] = {}
         self._current_fxn: str | None = None
+
+    def reference_edges(self) -> set[tuple[str, str]]:
+        """Every (function, name) it loads, with names loaded through a module-level table expanded to the table's."""
+        edges = set(self._name_loads)
+        for fxn, name in self._name_loads:
+            for ref in self._module_tables.get(name, ()):
+                edges.add((fxn, ref))
+        return edges
+
+    def visit_Name(self, node: ast.Name) -> None:
+        if self._current_fxn is not None and isinstance(node.ctx, ast.Load):
+            self._name_loads.add((self._current_fxn, node.id))
+
+    def visit_Assign(self, node: ast.Assign) -> None:
+        if self._current_fxn is None and isinstance(node.value, (ast.Dict, ast.List, ast.Tuple, ast.Set)):
+            names = {n.id for n in ast.walk(node.value) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    self._module_tables.setdefault(target.id, set()).update(names)
+        self.generic_visit(node)
+
+    def visit_For(self, node: ast.For) -> None:
+        if self._current_fxn is not None:
+            self.loop_functions.add(self._current_fxn)
+        self.generic_visit(node)
+
+    visit_AsyncFor = visit_For
+
+    def visit_While(self, node: ast.While) -> None:
+        if self._current_fxn is not None:
+            self.loop_functions.add(self._current_fxn)
+        self.generic_visit(node)
 
     @staticmethod
     def _is_trivial_stub(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
@@ -374,13 +412,16 @@ class CartoucheScanner:
                     )
 
         broken_edges: list[list[str]] = []
+        # a call, or a reference through a module-level dispatch table (ruling 2026-11-03, counter)
+        edges = extractor.call_edges | extractor.reference_edges()
+        heard = {(a, b) for a, b, *_ in self.cartouche.get("heard_edges", [])}
 
         def reaches(start: str, goal: str) -> bool:
             """goal is called from start, directly or through other functions of this build."""
             seen, stack = set(), [start]
             while stack:
                 here = stack.pop()
-                for a, b in extractor.call_edges:
+                for a, b in edges:
                     if a == here and b not in seen:
                         if b == goal:
                             return True
@@ -389,14 +430,20 @@ class CartoucheScanner:
             return False
 
         for caller, callee in self.cartouche["required_edges"]:
-            direct_edge = (caller, callee) in extractor.call_edges
+            direct_edge = (caller, callee) in edges
             # "Sequenced with": one function calls the caller and reaches the callee, directly or through the
             # turn function that owns the loop (owner ruling 2026-11-03: start_round -> take_turn -> ask_question).
             orchestrated_edge = any(
-                (orch, caller) in extractor.call_edges and reaches(orch, callee)
+                (orch, caller) in edges and reaches(orch, callee)
                 for orch in extractor.defined_functions
             )
-            if direct_edge or orchestrated_edge:
+            # A heard edge is the other party's next line; a function that owns a loop and reaches both ends
+            # drives that order from what it hears, which the call graph does not show (ruling 2026-11-03, counter).
+            loop_edge = (caller, callee) in heard and any(
+                (loop == caller or reaches(loop, caller)) and (loop == callee or reaches(loop, callee))
+                for loop in extractor.loop_functions
+            )
+            if direct_edge or orchestrated_edge or loop_edge:
                 continue
             broken_edges.append([caller, callee])
             caller_home = home(caller)

@@ -12,6 +12,7 @@ All notable changes to Cartouche are recorded here. The format follows Keep a Ch
   render. macOS only; elsewhere drop a clip into the folder as before.
 
 ### Changed
+- Scanner topology (ruling 2026-11-03, the counter): a function named in a module-level table (dict, list, tuple, set) and read through that table from a function body counts as called by that function; a heard edge whose two ends are both reachable from a function that owns a `for` or `while` loop is satisfied, because that loop drives the order from what it hears and the call graph does not show it. Apps whose lines call each other directly are unchanged (expenses, connect4, wordfreq sealed before and after); the counter went from 37 topology breaks to 0. An edge with no loop and no table is still broken (`test_dispatch_table_loop_satisfies_heard_edge`).
 - The template fault DEGENERATE_CONSTANT_RETURN now means the answer does not depend on the input: one and the
   same literal from every return, or literals chosen without any test that reads a parameter. A classifier that
   returns one of several labels after testing its arguments is a real function. Owner ruling 2026-11-03, on
