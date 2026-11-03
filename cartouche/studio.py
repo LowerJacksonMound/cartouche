@@ -326,7 +326,7 @@ function gatherView(s){
   const all=n>1?`<div class="rel"><button onclick="signAll(this)">sign off all ${n} clips you watched through</button><span id="relmsg" class="count">one watched clip per line; lines with two watched clips are left for you</span></div>`:'';
   return rel+all+s.lines.map(l=>{const signed=l.status==='approved'||l.status==='reused';
     const short=t=>'“'+esc(t.length>38?t.slice(0,36)+'…':t)+'”';
-    const where=l.instead_of?`<div class="tree">edge case, instead of ${short(l.instead_of)} · after ${l.after.map(short).join(' or ')}</div>`
+    const where=l.instead_of?`<div class="tree">${l.edge_case?'edge case, ':''}instead of ${short(l.instead_of)} · after ${l.after.map(short).join(' or ')}</div>`
       :((l.heard_before||[]).length?`<div class="tree">when they say ${l.heard_before.map(short).join(' or ')}</div>`
       :(l.after.length?`<div class="tree">after ${l.after.map(short).join(' or ')}</div>`:'<div class="tree">the first line</div>'));
     const head=`<div class="lh"><span class="stepn">${l.step}</span><span class="ph">“${esc(l.phrase)}”</span><span class="fn">${esc(l.function)}</span>${l.edge_case?'<span class="edge">edge case</span>':''}<span class="st" style="color:${signed?'var(--green)':'var(--dim)'}">${signed?'signed off':(l.candidates.length?l.candidates.length+' candidates':'searching…')}</span></div>${where}`;
@@ -389,7 +389,7 @@ async function tick(once){
     const pv=document.getElementById('pathvid');const pathSig=JSON.stringify([s.paths,s.lines.map(l=>[l.status,l.candidates.length])]);
     if(s.stage!=='watch'&&pathSig!==pathsBuilt&&!(pv&&!pv.paused)){document.getElementById('paths').innerHTML=pathsView(s);pathsBuilt=pathSig;wire()}
     if(s.stage==='watch')document.getElementById('paths').style.display='none';
-    if(s.cartouche_sha256)document.getElementById('lock').textContent='lock '+s.cartouche_sha256.slice(0,16)+'…';
+    document.getElementById('lock').textContent=s.cartouche_sha256?'lock '+s.cartouche_sha256.slice(0,16)+'…':'';
     const playing=[...document.querySelectorAll('video[data-key]')].some(v=>!v.paused&&!v.ended);
     if(s.stage==='watch'){const html=watchView(s);const sig=JSON.stringify((s.watch.signs||[]).map(r=>[r.fault,r.fidelity]))+s.watch.state;
       if(built!=='w'+sig){document.getElementById('body').innerHTML=html;built='w'+sig;lastSvg=''}
