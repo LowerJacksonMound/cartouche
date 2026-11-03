@@ -12,6 +12,10 @@ All notable changes to Cartouche are recorded here. The format follows Keep a Ch
   render. macOS only; elsewhere drop a clip into the folder as before.
 
 ### Changed
+- The template fault DEGENERATE_CONSTANT_RETURN now means the answer does not depend on the input: one and the
+  same literal from every return, or literals chosen without any test that reads a parameter. A classifier that
+  returns one of several labels after testing its arguments is a real function. Owner ruling 2026-11-03, on
+  the first joint build with Closer: `fxnB_verify_human` was accepted by Closer and called a template here.
 - `ct_search` (YouTube) over-fetches three ids per hit wanted, drops any title written in another script before
   fetching anything, reads subtitles for the rest, and returns the hits best spoken moment first. The unsubtitled
   trail behind them in YouTube's order, each marked. Measured on one query: 30 listed, 1 dropped by title, the ten

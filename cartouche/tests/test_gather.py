@@ -351,3 +351,22 @@ class RenderCardTests(IncomingFolderTests):
     def test_render_missing_refuses_a_phrase_not_in_the_request(self) -> None:
         with self.assertRaises(ValueError):
             gather.render_missing(self.spec, self.base, ["not a line"])
+
+
+class ConstantReturnRule(unittest.TestCase):
+    def info(self, src):
+        import ast
+        from cartouche.cartouche_scanner import ASTTopologyExtractor
+        return ASTTopologyExtractor._audit_malformations(ast.parse(src).body[0])
+
+    def test_one_literal_from_every_return_is_degenerate(self):
+        self.assertTrue(self.info("def f(x):\n    if x:\n        return 'a'\n    return 'a'\n")["only_constant_returns"])
+        self.assertTrue(self.info("def f(x):\n    return None\n")["only_constant_returns"])
+
+    def test_labels_chosen_by_testing_a_parameter_are_not(self):
+        src = ("def f(frame):\n    speech = frame['speech']\n    text = frame['text']\n"
+               "    if 'tone' in text.lower():\n        return 'voicemail'\n    if speech and text:\n        return 'human'\n    return 'silence'\n")
+        self.assertFalse(self.info(src)["only_constant_returns"])
+
+    def test_labels_chosen_without_reading_a_parameter_are_degenerate(self):
+        self.assertTrue(self.info("def f(x):\n    if True:\n        return 'a'\n    return 'b'\n")["only_constant_returns"])

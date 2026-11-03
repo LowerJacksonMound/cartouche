@@ -49,9 +49,19 @@ class ASTTopologyExtractor(ast.NodeVisitor):
             isinstance(n, ast.ExceptHandler) and n.type is None for n in sub_nodes
         )
         returns = [n for n in sub_nodes if isinstance(n, ast.Return)]
-        only_constant_returns = bool(returns) and all(
-            isinstance(r.value, ast.Constant) for r in returns
+        # Degenerate means the answer does not depend on the input: one and the same literal from every return, or
+        # literals chosen without any test that reads a parameter. A classifier that returns one of several labels
+        # after testing its arguments is a real function (owner ruling 2026-11-03, on fxnB_verify_human).
+        constant_values = [r.value.value for r in returns if isinstance(r.value, ast.Constant)]
+        all_constant = bool(returns) and len(constant_values) == len(returns)
+        tests = [n.test for n in sub_nodes if isinstance(n, (ast.If, ast.IfExp, ast.While))]
+        reads_param = any(
+            isinstance(m, ast.Name) and m.id in arg_names for t in tests for m in ast.walk(t)
+        ) or any(
+            isinstance(m, ast.Name) and m.id in arg_names
+            for n in sub_nodes if isinstance(n, ast.Assign) for m in ast.walk(n.value)
         )
+        only_constant_returns = all_constant and (len(set(map(repr, constant_values))) <= 1 or not reads_param)
         executable_nodes = [n for n in sub_nodes if isinstance(n, _EXECUTABLE)]
         return {
             "arg_names": arg_names,
