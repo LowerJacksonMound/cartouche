@@ -163,6 +163,20 @@ class ASTTopologyExtractor(ast.NodeVisitor):
         self.generic_visit(node)
         self._current_fxn = prev_fxn
 
+    @staticmethod
+    def _getattr_literal(node: ast.AST) -> str | None:
+        """`getattr(x, "name")` with a literal str names that attribute; a computed name is not followed."""
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "getattr"
+            and len(node.args) >= 2
+            and isinstance(node.args[1], ast.Constant)
+            and isinstance(node.args[1].value, str)
+        ):
+            return node.args[1].value
+        return None
+
     def visit_Call(self, node: ast.Call) -> None:
         if self._current_fxn is not None:
             callee_name: str | None = None
@@ -170,6 +184,12 @@ class ASTTopologyExtractor(ast.NodeVisitor):
                 callee_name = node.func.id
             elif isinstance(node.func, ast.Attribute):
                 callee_name = node.func.attr
+            elif self._getattr_literal(node.func):
+                # ruling 2026-11-03 (stress 05): getattr(module_or_self, "literal")(...) is a call to that name
+                callee_name = self._getattr_literal(node.func)
+            looked_up = self._getattr_literal(node)
+            if looked_up:
+                self._name_loads.add((self._current_fxn, self._real(looked_up)))
             if callee_name:
                 self.call_edges.add((self._current_fxn, self._real(callee_name)))
         self.generic_visit(node)

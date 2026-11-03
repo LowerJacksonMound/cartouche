@@ -345,6 +345,30 @@ class RuleTests(unittest.TestCase):
             self.assertEqual(report["broken_edges"], [], app)
             self.assertTrue(report["is_sealed"], report)
 
+    def test_a_getattr_of_a_literal_name_is_the_edge_and_a_computed_name_is_not(self) -> None:
+        """getattr(module, "fxn_b")(x) calls fxn_b; getattr(module, name)(x) is not followed (stress 05, 2026-11-03)."""
+        track = {
+            "domain_id": "lookup",
+            "required_primitives": {"fxn_a": "a", "fxn_b": "b"},
+            "required_edges": [["fxn_a", "fxn_b"]],
+            "glyph_slots": {"fxn_a": 0, "fxn_b": 1},
+            "primitive_params": {"fxn_a": ["x"], "fxn_b": ["x"]},
+            "primitive_invariants": {"fxn_b": {"forbid_constant_return": False}},
+        }
+        master = CartoucheCompiler(track).compile_cartouche()
+        head = "import sys\ndef fxn_b(x):\n    return 1\n"
+        literal = head + "def fxn_a(x):\n    return getattr(sys.modules[__name__], 'fxn_b')(x)\n"
+        computed = head + "def fxn_a(x):\n    name = 'fxn_' + 'b'\n    return getattr(sys.modules[__name__], name)(x)\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "lookup.py"
+            path.write_text(literal, encoding="utf-8")
+            report = CartoucheScanner(master).scan_file(path)
+            self.assertTrue(report["is_sealed"], report)
+            self.assertEqual(report["broken_edges"], [])
+            path.write_text(computed, encoding="utf-8")
+            report = CartoucheScanner(master).scan_file(path)
+        self.assertEqual(report["broken_edges"], [["fxn_a", "fxn_b"]])
+
     def test_missing_params_bare_except_and_floor(self) -> None:
         track = signal_track()
         master = CartoucheCompiler(track).compile_cartouche()
