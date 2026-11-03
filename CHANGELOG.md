@@ -4,6 +4,13 @@ All notable changes to Cartouche are recorded here. The format follows Keep a Ch
 
 ## [Unreleased]
 
+### Added
+- `ct_render`: after the search rounds, a stand-in clip for every line still without a candidate (or the lines named):
+  the line spoken by macOS `say` over a title card, written to the line's incoming folder with its sidecar and offered
+  at once, licence "yours". For a line no footage says (an app's own voice, an error path) or whose found clips are
+  poor; the person sees it beside the found clips and decides. The gather instructions now say: two rounds, then
+  render. macOS only; elsewhere drop a clip into the folder as before.
+
 ### Changed
 - `ct_search` (YouTube) over-fetches three ids per hit wanted, drops any title written in another script before
   fetching anything, reads subtitles for the rest, and returns the hits best spoken moment first. The unsubtitled

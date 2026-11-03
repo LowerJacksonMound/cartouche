@@ -333,7 +333,7 @@ def _server_checks(paths: dict[str, Path], tmp: Path, say: Say) -> None:
 
     with Server(tmp) as server:
         names = server.tools()
-        if names != ["ct_watch", "ct_look", "ct_stop", "ct_hold", "ct_chart", "ct_wanted", "ct_search", "ct_offer", "ct_withdraw"]:
+        if names != ["ct_watch", "ct_look", "ct_stop", "ct_hold", "ct_chart", "ct_wanted", "ct_search", "ct_offer", "ct_withdraw", "ct_render"]:
             raise Failure(f"tools/list: {names}")
         say("mcp tools/list", " ".join(names))
 

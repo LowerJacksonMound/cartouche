@@ -331,3 +331,23 @@ class SearchHoning(unittest.TestCase):
         hits = [{"url": "a"}, {"url": "b", "moments": [{"match": 0.5}]}, {"url": "c", "moments": [{"match": 0.9}, {"match": 0.2}]},
                 {"url": "d", "moments": []}]
         self.assertEqual([h["url"] for h in rank_by_moment(hits)], ["c", "b", "a", "d"])
+
+
+@unittest.skipUnless(HAVE_FFMPEG and shutil.which("say"), "ffmpeg and macOS say are needed to render a card")
+class RenderCardTests(IncomingFolderTests):
+    def test_render_missing_offers_a_card_for_each_empty_line_only(self) -> None:
+        self.drop(self.lines[0], "found.mp4")
+        gather.sweep_incoming(self.spec, self.base)
+        rows = gather.render_missing(self.spec, self.base)
+        self.assertEqual([r["phrase"] for r in rows], [l["phrase"] for l in self.lines[1:]])
+        self.assertTrue(all(r["offered"] for r in rows), rows)
+        found = gather.candidates(self.spec, self.base, self.lines[1]["phrase"])
+        self.assertEqual(len(found), 1)
+        self.assertIn("rendered", found[0]["why"])
+        self.assertIn("yours", found[0]["licence"])
+        self.assertGreater(found[0]["seconds"], 1.0)
+        self.assertEqual(gather.render_missing(self.spec, self.base), [])  # nothing left empty
+
+    def test_render_missing_refuses_a_phrase_not_in_the_request(self) -> None:
+        with self.assertRaises(ValueError):
+            gather.render_missing(self.spec, self.base, ["not a line"])

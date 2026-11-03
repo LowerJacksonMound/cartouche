@@ -251,7 +251,7 @@ class McpStdioTests(unittest.TestCase):
             self.assertIn("ct_look", started["result"]["instructions"])
             listed = rpc(2, "tools/list")
             names = [tool["name"] for tool in listed["result"]["tools"]]
-            self.assertEqual(names, ["ct_watch", "ct_look", "ct_stop", "ct_hold", "ct_chart", "ct_wanted", "ct_search", "ct_offer", "ct_withdraw"])
+            self.assertEqual(names, ["ct_watch", "ct_look", "ct_stop", "ct_hold", "ct_chart", "ct_wanted", "ct_search", "ct_offer", "ct_withdraw", "ct_render"])
             unbound = rpc(3, "tools/call", {"name": "ct_look", "arguments": {}})
             self.assertTrue(unbound["result"]["isError"])
             with tempfile.TemporaryDirectory() as tmp:

@@ -27,6 +27,7 @@ A client entry is the script, or `python3` with args `-m cartouche.mcp` and the 
 | `ct_search` | `searches` (one per line: `source`, `query`, optional `spoken`, `limit`), optional `creative_commons`. Runs them in parallel. `spoken` reads each YouTube hit's subtitles and names the seconds where those words are said. Downloads no video. |
 | `ct_offer` | `spec`, `clips` (each: `phrase`, `source`, `url`, `start`, `seconds` up to 20, `why`). Cuts every candidate in parallel into `candidates/` beside the spec and records its source and licence. |
 | `ct_withdraw` | `spec`, `withdraw` (each: `phrase`, `id`). Takes back offered candidates that do not fit. Refused for a signed-off line. |
+| `ct_render` | `spec`, optional `phrases` (lines as `ct_wanted` gives them; default every line with no candidate), optional `voice`. Renders a stand-in, the line spoken by macOS `say` over a title card, into the line's incoming folder and offers it at once. For a line no footage says, or whose found clips are poor. macOS only. |
 
 Rendered clips skip search: write them into a line's `incoming/<function>/` folder (sidecar `<clip>.json`: why, licence, title, author). The page offers them on its next poll.
 

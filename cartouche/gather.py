@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -73,6 +74,64 @@ def incoming_dir(base: Path, function: str) -> Path:
     """Where rendered clips for one line are dropped: incoming/<function>/."""
 
     return base / "incoming" / function
+
+
+def render_card(phrase: str, speaker: str, out: Path, voice: str = "") -> dict[str, Any]:
+    """A stand-in clip for a line no footage says: the line spoken by macOS `say` over a title card, written to out
+    (.mp4) with its sidecar .json so sweep_incoming offers it. The person sees it beside any found clip and decides.
+    shortcut: macOS only (say); a generated video or the person's own render goes in the same folder the same way."""
+    if not shutil.which("say"):
+        raise ValueError("render needs macOS `say`; on another system drop your own clip into the incoming folder")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        aiff = Path(tmp) / "line.aiff"
+        said = subprocess.run(["say", *(["-v", voice] if voice else []), "-o", str(aiff), phrase], capture_output=True, text=True)
+        if said.returncode != 0:
+            raise ValueError(f"say could not speak the line: {said.stderr.strip()[-200:]}")
+        seconds = min(MAX_SECONDS, (_probe(aiff).get("seconds") or 2.0) + 0.8)
+        card = Path(tmp) / "card.txt"
+        card.write_text(phrase, encoding="utf-8")
+        who = (speaker or "the app").replace("'", "\\'").replace(":", "\\:")
+        done = subprocess.run(
+            ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+             "-f", "lavfi", "-i", f"color=c=0x1d1f24:s=1280x720:r=25:d={seconds:.2f}", "-i", str(aiff),
+             "-vf", (f"drawtext=fontfile=/System/Library/Fonts/Helvetica.ttc:textfile={card}:fontcolor=white:fontsize=44"
+                     ":x=(w-text_w)/2:y=(h-text_h)/2:line_spacing=12,"
+                     f"drawtext=fontfile=/System/Library/Fonts/Helvetica.ttc:text='{who}':fontcolor=0x9aa0a6:fontsize=28"
+                     ":x=(w-text_w)/2:y=h-120"),
+             "-t", f"{seconds:.2f}", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", "-movflags", "+faststart", str(out)],
+            capture_output=True, text=True,
+        )
+    if done.returncode != 0:
+        raise ValueError(f"ffmpeg could not render the card: {done.stderr.strip()[-200:]}")
+    side = {"why": "rendered stand-in: the line spoken over a title card, for a line no footage says",
+            "licence": "yours: rendered by Cartouche on this machine", "title": phrase, "author": speaker or "the app",
+            "seconds": seconds, "rendered": "say+ffmpeg"}
+    out.with_suffix(".json").write_text(json.dumps(side, indent=1) + "\n", encoding="utf-8")
+    return {"clip": str(out), "seconds": seconds}
+
+
+def render_missing(spec: dict[str, Any], base: Path, phrases: list[str] | None = None, voice: str = "") -> list[dict[str, Any]]:
+    """Render a card for each named line, or for every line with no candidate, into incoming/<function>/, then
+    sweep so they are offered at once. Returns one row per line rendered."""
+    lines = wanted(spec, base / "clip_dictionary.json", base)["lines"]
+    chosen = [l for l in lines if (phrases and l["phrase"] in phrases) or (not phrases and l["candidates"] == 0)]
+    if phrases:
+        missing = set(phrases) - {l["phrase"] for l in chosen}
+        if missing:
+            raise ValueError(f"not a line of this request: {sorted(missing)}")
+    rows = []
+    for line in chosen:
+        out = base / line["incoming"] / f"card_{int(time.time())}.mp4"
+        row = {"phrase": line["phrase"], **render_card(line["phrase"], line.get("speaker", ""), out, voice)}
+        old = out.stat().st_mtime - 3  # settled: sweep skips a file younger than two seconds
+        os.utime(out, (old, old))
+        rows.append(row)
+    swept = sweep_incoming(spec, base)
+    by_file = {t["file"]: t for t in swept}
+    for row in rows:
+        row.update({k: by_file.get(Path(row["clip"]).name, {}).get(k) for k in ("offered", "id", "reason")})
+    return rows
 
 
 def sweep_incoming(spec: dict[str, Any], base: Path) -> list[dict[str, Any]]:

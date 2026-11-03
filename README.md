@@ -121,7 +121,7 @@ with Claude Code at user scope; `--print` shows the command without running it.
 
 - `INTENT.md`: what is locked, what the lock is for, release, start and stop, hold, sequence, macro,
   request, phrase, signs, image.
-- `MCP.md`: the stdio server, the nine tools (four for the watch, five for gather), their arguments and refusals.
+- `MCP.md`: the stdio server, the ten tools (four for the watch, six for gather), their arguments and refusals.
 - `BROLL.md`: the dictionary shelf: seek, fill, check-off, reuse.
 
 ## License

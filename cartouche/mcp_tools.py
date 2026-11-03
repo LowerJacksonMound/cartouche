@@ -346,6 +346,25 @@ TOOLS: dict[str, dict[str, Any]] = {
             "additionalProperties": False,
         },
     },
+    "ct_render": {
+        "description": (
+            "GATHER, after the search rounds. Render a stand-in clip for every line that still has no candidate "
+            "(or for the lines named): the line spoken by the machine over a title card, dropped into the line's "
+            "incoming folder and offered at once. Use it for a line no footage says, or one whose found clips are "
+            "poor; the person sees it beside the found clips and decides. macOS only."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "spec": {"type": "string", "description": "Path to the request spec JSON."},
+                "phrases": {"type": "array", "items": {"type": "string"},
+                            "description": "Lines to render, exactly as ct_wanted gives them. Default: every line with no candidate."},
+                "voice": {"type": "string", "description": "A `say` voice name; default the system voice."},
+            },
+            "required": ["spec"],
+            "additionalProperties": False,
+        },
+    },
 }
 
 
@@ -392,6 +411,12 @@ def _gather(name: str, args: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(items, list) or not items:
             return {"error": "withdraw must be a non-empty list"}
         return {"results": [gather.withdraw(spec, base / "clip_dictionary.json", base, str(i.get("phrase", "")), str(i.get("id", ""))) for i in items]}
+    if name == "ct_render":
+        phrases = args.get("phrases")
+        if phrases is not None and (not isinstance(phrases, list) or not all(isinstance(x, str) for x in phrases)):
+            return {"error": "phrases must be a list of strings"}
+        rows = gather.render_missing(spec, base, phrases or None, str(args.get("voice") or ""))
+        return {"rendered": len(rows), "results": rows}
     if name == "ct_wanted":
         answer = gather.wanted(spec, base / "clip_dictionary.json", base)
         answer["swept"] = gather.sweep_incoming(spec, base)
@@ -413,7 +438,7 @@ def call_tool(name: str, arguments: dict[str, Any] | None) -> dict[str, Any]:
         return WATCH.stop()
     if name == "ct_hold":
         return WATCH.hold(str(args["spec"]), str(args["contract"]), str(args["target"]))
-    if name in ("ct_chart", "ct_wanted", "ct_search", "ct_offer", "ct_withdraw"):
+    if name in ("ct_chart", "ct_wanted", "ct_search", "ct_offer", "ct_withdraw", "ct_render"):
         try:
             return _gather(name, args)
         except (OSError, ValueError, KeyError) as error:

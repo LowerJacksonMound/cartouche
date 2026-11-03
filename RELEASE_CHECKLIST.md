@@ -18,7 +18,7 @@ a CLI subcommand or an MCP tool changes in a release pass; a pass proves and pac
 - [ ] README.md and QUICKSTART.md commands run as pasted; `install_cartouche_mcp.sh --print` prints the
       registration line for this tree's absolute path.
 - [ ] `cartouche-mcp.sh` is executable and `python3 -m cartouche.mcp` answers `tools/list` with exactly
-      `ct_watch ct_look ct_stop ct_hold ct_chart ct_wanted ct_search ct_offer ct_withdraw` (since 0.2.0; 0.1.0 had the first four).
+      `ct_watch ct_look ct_stop ct_hold ct_chart ct_wanted ct_search ct_offer ct_withdraw ct_render` (0.1.0 had the first four; 0.2.0 the next five).
 
 ## Scan or lock change
 
