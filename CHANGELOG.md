@@ -10,6 +10,8 @@ All notable changes to Cartouche are recorded here. The format follows Keep a Ch
   trail behind them in YouTube's order, each marked. Measured on one query: 30 listed, 1 dropped by title, the ten
   returned led by the five that carry English subtitles; before, four of ten. A search takes about three times as
   long. The gather instructions no longer ask the agent to check the title's language.
+- `ct_offer` (YouTube) refuses a video whose original title is in another script, with the title in the reason.
+  The search listing can show a translated title; the original is only read at offer time.
 
 ## [0.2.0] - 2026-10-23
 

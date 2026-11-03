@@ -361,6 +361,9 @@ def _fetch_youtube(url: str, start: float, seconds: float, out: Path) -> dict[st
     if meta.returncode != 0:
         raise ValueError(f"yt-dlp could not read {url}: {meta.stderr.strip()[-200:]}")
     vid, title, uploader, licence, page = (meta.stdout.strip().splitlines()[-1].split("\t") + [""] * 5)[:5]
+    # The search listing can show YouTube's translated title; the original is only known here, before the cut.
+    if not english_title(title):
+        raise ValueError(f"not offered: the video's title is in another script ({title[:60]})")
     got = subprocess.run(
         ytdlp(
             "-q", "-f", YT_FORMAT,
