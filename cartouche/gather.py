@@ -127,8 +127,10 @@ def render_missing(spec: dict[str, Any], base: Path, phrases: list[str] | None =
         old = out.stat().st_mtime - 3  # settled: sweep skips a file younger than two seconds
         os.utime(out, (old, old))
         rows.append(row)
-    swept = sweep_incoming(spec, base)
-    by_file = {t["file"]: t for t in swept}
+    sweep_incoming(spec, base)
+    # Read the ledger, not this sweep's return: a running page polls the same folder and may have taken the card first.
+    ledger = json.loads((base / "incoming" / ".taken.json").read_text(encoding="utf-8"))
+    by_file = {k.split("|")[0].rsplit("/", 1)[-1]: v for k, v in ledger.items()}
     for row in rows:
         row.update({k: by_file.get(Path(row["clip"]).name, {}).get(k) for k in ("offered", "id", "reason")})
     return rows
