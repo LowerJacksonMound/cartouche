@@ -206,9 +206,9 @@ Now a build that drifted. The fixture `agent_shifted_edge.py` has the same bodie
                  "directive": "Topological invariant violation: 'fxnB_verify_human' must transition to or be sequenced with 'fxnC_transmit_request'."}],
      "bound": true}
 
-`fault` is one of the five defect words from INTENT.md: `template` (a hollow stub), `locked` (the request
-was edited after release), `hazy` (the function is there but not clear: a constant return, too thin),
-`missing` (the function is not there), `skew` (a required edge is gone). A file that does not parse is
+`fault` is one of the four defect words from INTENT.md: `template` (a hollow stub, or a fake-shaped body: a
+constant return, a swallowing bare except), `locked` (the request was edited after release), `missing` (the
+function or its locked parameters are not there), `skew` (a required edge is gone). A sign is sealed or it is not. A file that does not parse is
 `SYNTAX`. `detail` keeps the scanner's own codes. Give that row to the build agent. Cartouche keeps
 watching; it does not fix the file. A `ct_watch` on a different target while this one is bound answers:
 
@@ -227,6 +227,37 @@ A target the agent has not written yet is not a miss:
 
     {"sealed": false, "waiting": true, "scanned": false, "reason": "waiting", "target": "$W/later.py",
      "open": 0, "issues": [], "bound": true}
+
+## 8. Watch it fill: the live page
+
+From a terminal, in `$W`, with an empty build path:
+
+    rm -rf live && mkdir live
+    python3 -m cartouche start spec.json build_input.json live/agent.py --session session.json --interval 0.5 &
+    python3 -m cartouche page --session session.json
+
+The page prints:
+
+    page=http://127.0.0.1:8790/ source=session session.json
+
+Open it. All five signs are ghost outlines and the state reads `waiting`. Now write the build one function
+at a time, the way a writer stages it:
+
+    python3 - <<'PY'
+    import time, pathlib, os
+    src = pathlib.Path(os.environ["CT"], "cartouche/tests/fixture/agent_sealed.py").read_text().split("\ndef ")
+    for n in range(1, len(src)):
+        pathlib.Path("live/agent.py").write_text("\ndef ".join(src[: n + 1]) + "\n"); time.sleep(3)
+    PY
+
+Each sign fills as its function is written: `1 of 5 signs sealed`, then 2, 3, 4, 5. The falcon's ring
+closes after the third function, the vulture's after the fifth, and the state reads `sealed`. Copy in
+`agent_shifted_edge.py` and the mouth shows `skew` while the watch stays up. `cartouche stop session.json`
+ends the watch and the page shows it stopped.
+
+For a watch through the MCP server, point the page at the same three paths you gave `ct_watch`:
+
+    python3 -m cartouche page "$W/spec.json" "$W/build_input.json" "$W/build"
 
 ## What `sealed` means
 

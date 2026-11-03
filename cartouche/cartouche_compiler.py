@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from cartouche.project_symbol import project_sign
-from cartouche.symbols import SIGNS, assign_distinct
+from cartouche.symbols import ALL_SIGNS, assign_distinct
 
 _FXN_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
@@ -88,6 +88,8 @@ class CartoucheCompiler:
                 "domain_id": self.signal_track["domain_id"],
                 "sub_glyphs": sub_glyphs,
                 "required_edges": edges,
+                # only a chart that names what the other party says carries this, so every other lock is unchanged
+                **({"heard_edges": self.signal_track["heard_edges"]} if self.signal_track.get("heard_edges") else {}),
             },
             sort_keys=True,
         )
@@ -98,6 +100,7 @@ class CartoucheCompiler:
             "expected_full_bitmask": full_bitmask,
             "sub_glyphs": sub_glyphs,
             "required_edges": edges,
+            **({"heard_edges": self.signal_track["heard_edges"]} if self.signal_track.get("heard_edges") else {}),
         }
         if output_path is not None:
             output_path.write_text(
@@ -118,7 +121,7 @@ class CartoucheCompiler:
         for index, (fxn_name, meta) in enumerate(master_cartouche["sub_glyphs"].items()):
             diag = glyph_diagnostics[fxn_name]
             fidelity = diag["fidelity"]
-            sign = next(item for item in SIGNS if item["id"] == meta["sign_id"])
+            sign = next(item for item in ALL_SIGNS if item["id"] == meta["sign_id"])
             drawn = project_sign(sign["svg"], fidelity, fxn_name in broken_callers)
             fault_text = ", ".join(diag["faults"]) or "None"
             title = _xml_text(f"{fxn_name} | Fidelity: {fidelity:.2f} | Faults: {fault_text}")

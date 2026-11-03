@@ -75,12 +75,14 @@ class SignalStitcher:
         signal_sequences: list[dict[str, Any]] = []
         required_primitives: dict[str, str] = {}
         required_edges: set[tuple[str, str]] = set()
+        heard_edges: dict[tuple[str, str], set[str]] = {}
         glyph_slots: dict[str, int] = {}
         missing_clips: list[str] = []
 
         for path_idx, node_path in enumerate(paths):
             seq_signals: list[str] = []
             prev_fxn: str | None = None
+            prev_id: str | None = None
             for node_id in node_path:
                 node = self.nodes[node_id]
                 token_id = node["token_id"]
@@ -101,7 +103,12 @@ class SignalStitcher:
                 required_primitives[fxn_name] = sig_hash
                 if prev_fxn and prev_fxn != fxn_name:
                     required_edges.add((prev_fxn, fxn_name))
+                    # what the other party says that leads here: part of the intent when the chart names it
+                    for branch in self.nodes[prev_id].get("branches", []) if prev_id else []:
+                        if branch.get("target_node") == node_id and str(branch.get("heard", "")).strip():
+                            heard_edges.setdefault((prev_fxn, fxn_name), set()).add(str(branch["heard"]).strip())
                 prev_fxn = fxn_name
+                prev_id = node_id
                 clip = self._clip_file(atom["clip_path"])
                 if not clip.is_file():
                     missing_clips.append(clip.as_posix())
@@ -129,6 +136,11 @@ class SignalStitcher:
             "total_permutations": len(paths),
             "required_primitives": required_primitives,
             "required_edges": sorted([list(edge) for edge in required_edges]),
+            **(
+                {"heard_edges": [[a, b, sorted(h)] for (a, b), h in sorted(heard_edges.items())]}
+                if heard_edges
+                else {}
+            ),
             "glyph_slots": glyph_slots,
             "primitive_params": {key: list(value) for key, value in self.primitive_params.items()},
             "primitive_invariants": {

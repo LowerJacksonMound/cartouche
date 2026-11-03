@@ -9,6 +9,7 @@ from typing import Any, Callable
 
 from cartouche.cartouche_compiler import CartoucheCompiler
 from cartouche.hold import hold
+from cartouche.live import live_view
 from cartouche.project_symbol import LOCKED, issue_line, issues_of
 from cartouche.signal_stitcher import SignalStitcher
 
@@ -88,6 +89,27 @@ def watch_once(
     }
 
 
+def _drawn(spec_data: dict[str, Any], contract: dict[str, Any], target: Path, base_dir: Path) -> dict[str, Any]:
+    """The cartouche as it stands, for the live page: one row per sign and the drawing.
+
+    A directory is one scan here, as it is for ct_look. A failure to draw never ends the watch.
+    """
+
+    try:
+        view = live_view(spec_data, contract, target, base_dir)
+    except Exception as error:  # the drawing is a view; the watch keeps reporting issues without it
+        return {"view_error": f"{type(error).__name__}: {error}"[:300]}
+    return {
+        "state": view["state"],
+        "signs_sealed": view["signs_sealed"],
+        "signs_total": view["signs_total"],
+        "residual": view["residual"],
+        "signs": view["signs"],
+        "svg": view["svg"],
+        "updated": time.time(),
+    }
+
+
 def run_session(
     spec_data: dict[str, Any],
     contract: dict[str, Any],
@@ -107,6 +129,7 @@ def run_session(
     code = 2
     while True:
         state = watch_once(spec_data, contract, target, base_dir)
+        state.update(_drawn(spec_data, contract, target, base_dir))
         stopping = flag.is_file()
         state["running"] = not stopping
         state["target"] = str(target)

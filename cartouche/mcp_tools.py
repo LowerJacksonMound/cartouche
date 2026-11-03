@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -203,7 +204,7 @@ TOOLS: dict[str, dict[str, Any]] = {
     "ct_look": {
         "description": (
             "Scan the bound build once. Each issue names the file, the function, the lines, "
-            "and the fault: one of template, locked, hazy, missing, skew; the scanner's codes "
+            "and the fault: one of template, locked, missing, skew; the scanner's codes "
             "are in detail. A directory is one scan. A file that does not parse is a SYNTAX "
             "fault and does not end the watch. Nothing written yet is waiting, with an empty "
             "issue list. Does not rewrite the release."
@@ -233,7 +234,173 @@ TOOLS: dict[str, dict[str, Any]] = {
             "additionalProperties": False,
         },
     },
+    "ct_chart": {
+        "description": (
+            "GATHER, step 1. Check a chart you drafted from the person's plain app request and, if it "
+            "passes, save it as the request spec. The chart is every line of the interaction (each with "
+            "the function it stands for) and every decision, edge cases included. Refuses a chart the "
+            "compilers would refuse and writes nothing then. Does not fetch or sign anything."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "chart": {"type": "object", "description": "The chart: domain_id, interaction, cartouche_capacity, root_id, nodes, b_roll_atoms, primitive_params, and request (the plain words)."},
+                "out": {"type": "string", "description": "Where to save the spec JSON. Its folder is the request folder."},
+            },
+            "required": ["chart", "out"],
+            "additionalProperties": False,
+        },
+    },
+    "ct_wanted": {
+        "description": (
+            "GATHER, step 2. Every line a path of the chart reaches: its function, whether it is an "
+            "edge case, its sign-off status, how many candidate clips it has, and its incoming folder. "
+            "Reserves each line's shelf slot. Any rendered clip dropped into a line's incoming folder "
+            "(by the person, a subagent, or a video generator) is offered on the sign-off page."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {"spec": {"type": "string", "description": "Path to the request spec JSON."}},
+            "required": ["spec"],
+            "additionalProperties": False,
+        },
+    },
+    "ct_search": {
+        "description": (
+            "GATHER, step 3. Search clip sources for every line in ONE call (searches run in parallel). "
+            "Sources: youtube (Creative Commons only unless creative_commons is false), archive (Internet "
+            "Archive films), pexels (needs PEXELS_API_KEY). Give spoken to search YouTube subtitles: each hit "
+            "then names the seconds where those words are said. Downloads no video."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "searches": {
+                    "type": "array",
+                    "description": "One search per line, all in one call; they run in parallel.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "phrase": {"type": "string", "description": "The line this search is for (echoed back)."},
+                            "source": {"type": "string", "enum": ["youtube", "archive", "pexels"]},
+                            "query": {"type": "string"},
+                            "spoken": {"type": "string", "description": "youtube: words to find in each hit's subtitles; each hit then carries moments (seconds where they are said)."},
+                            "limit": {"type": "integer", "minimum": 1, "maximum": 20},
+                        },
+                        "required": ["source", "query"],
+                    },
+                },
+                "creative_commons": {"type": "boolean", "description": "youtube: Creative Commons only (default true)."},
+            },
+            "required": ["searches"],
+            "additionalProperties": False,
+        },
+    },
+    "ct_offer": {
+        "description": (
+            "GATHER, step 4. Offer candidate clips (all lines in one call): Cartouche downloads each cut "
+            "(start, seconds, at most 20) into that line's candidates folder and records its source and "
+            "licence. Offer a few per line. You cannot choose or sign off a clip: the person does that "
+            "on the page (cartouche page --request), and no AI takes part after it."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "spec": {"type": "string", "description": "Path to the request spec JSON."},
+                "clips": {
+                    "type": "array",
+                    "description": "Every offer at once; they are cut in parallel. Send all lines' candidates in one call.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "phrase": {"type": "string", "description": "The line, exactly as ct_wanted gives it."},
+                            "source": {"type": "string", "enum": ["youtube", "archive", "pexels", "file"]},
+                            "url": {"type": "string"},
+                            "start": {"type": "number", "minimum": 0},
+                            "seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 20},
+                            "why": {"type": "string", "description": "One sentence: why this footage stands for the line."},
+                        },
+                        "required": ["phrase", "source", "url"],
+                    },
+                },
+            },
+            "required": ["spec", "clips"],
+            "additionalProperties": False,
+        },
+    },
+    "ct_withdraw": {
+        "description": (
+            "GATHER. Take back candidates you offered that do not fit (wrong setting, wrong speaker). "
+            "Refused for a line the person has signed off."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "spec": {"type": "string", "description": "Path to the request spec JSON."},
+                "withdraw": {
+                    "type": "array",
+                    "items": {"type": "object", "properties": {"phrase": {"type": "string"}, "id": {"type": "string"}}, "required": ["phrase", "id"]},
+                },
+            },
+            "required": ["spec", "withdraw"],
+            "additionalProperties": False,
+        },
+    },
 }
+
+
+def _gather(name: str, args: dict[str, Any]) -> dict[str, Any]:
+    import os
+
+    from cartouche import gather
+
+    if name == "ct_chart":
+        out = resolve_path(str(args["out"]))
+        chart = args["chart"]
+        if not isinstance(chart, dict):
+            return {"error": "chart must be a JSON object"}
+        checked = gather.check_chart(chart, out.parent)
+        if checked["ok"]:
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(chart, indent=2) + "\n", encoding="utf-8")
+            checked["spec"] = str(out)
+        return checked
+    if name == "ct_search":
+        from concurrent.futures import ThreadPoolExecutor
+
+        searches = args.get("searches")
+        if not isinstance(searches, list) or not searches:
+            return {"error": "searches must be a non-empty list"}
+        cc, key = bool(args.get("creative_commons", True)), os.environ.get("PEXELS_API_KEY", "")
+
+        def run(one: dict[str, Any]) -> dict[str, Any]:
+            try:
+                hits = gather.search(str(one.get("source", "")), str(one.get("query", "")), int(one.get("limit", 5)), cc, key, str(one.get("spoken", "")))
+            except (OSError, ValueError, KeyError, subprocess.TimeoutExpired) as error:
+                hits = [{"error": f"{type(error).__name__}: {error}"[:200]}]
+            return {"phrase": one.get("phrase", ""), "query": one.get("query", ""), "hits": hits}
+
+        with ThreadPoolExecutor(min(4, len(searches))) as pool:
+            return {"results": list(pool.map(run, searches))}
+    spec_path = resolve_path(str(args["spec"]))
+    if not spec_path.is_file():
+        return {"error": f"no such spec: {spec_path}"}
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    base = spec_path.parent
+    if name == "ct_withdraw":
+        items = args.get("withdraw")
+        if not isinstance(items, list) or not items:
+            return {"error": "withdraw must be a non-empty list"}
+        return {"results": [gather.withdraw(spec, base / "clip_dictionary.json", base, str(i.get("phrase", "")), str(i.get("id", ""))) for i in items]}
+    if name == "ct_wanted":
+        answer = gather.wanted(spec, base / "clip_dictionary.json", base)
+        answer["swept"] = gather.sweep_incoming(spec, base)
+        return answer
+    clips = args.get("clips")
+    if not isinstance(clips, list) or not clips:
+        return {"error": "clips must be a non-empty list"}
+    results = gather.offer_many(spec, base, clips)
+    return {"offered": sum(1 for r in results if r.get("offered")), "results": results}
 
 
 def call_tool(name: str, arguments: dict[str, Any] | None) -> dict[str, Any]:
@@ -246,4 +413,9 @@ def call_tool(name: str, arguments: dict[str, Any] | None) -> dict[str, Any]:
         return WATCH.stop()
     if name == "ct_hold":
         return WATCH.hold(str(args["spec"]), str(args["contract"]), str(args["target"]))
+    if name in ("ct_chart", "ct_wanted", "ct_search", "ct_offer", "ct_withdraw"):
+        try:
+            return _gather(name, args)
+        except (OSError, ValueError, KeyError) as error:
+            return {"error": f"{type(error).__name__}: {error}"[:400]}
     return {"error": f"no such tool {name!r}"}

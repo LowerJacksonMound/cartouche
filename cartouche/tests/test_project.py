@@ -16,21 +16,21 @@ from cartouche.tests.test_stitcher import PHASE1_SHA
 
 
 class ProjectTests(unittest.TestCase):
-    def test_five_defects_land_on_any_sign(self) -> None:
+    def test_a_sign_is_sealed_or_not_on_any_sign(self) -> None:
         eye = assign_symbol(["a", "b", "c"])
         other = assign_symbol(["only-one"])
         self.assertNotEqual(eye["svg"], other["svg"])
         for sign in (eye, other):
             locked = project_sign(sign["svg"], 1.0, False)
-            hazy = project_sign(sign["svg"], 0.4, False)
+            partial = project_sign(sign["svg"], 0.4, False)
             missing = project_sign(sign["svg"], 0.0, False)
             skew = project_sign(sign["svg"], 1.0, True)
             self.assertIn('stroke-dasharray="2 2"', locked)
             self.assertIn('color="#10b981"', locked)
             self.assertNotIn("feGaussianBlur", locked)
             self.assertNotIn("skewX", locked)
-            self.assertIn('stdDeviation="2.7"', hazy)
-            self.assertIn('color="#d97706"', hazy)
+            self.assertNotIn("feGaussianBlur", partial)  # no in-between: below 1.0 draws as not sealed
+            self.assertEqual(partial, project_sign(sign["svg"], 0.0, False))
             self.assertIn('color="#ef4444"', missing)
             self.assertIn('stroke-dasharray="4 3"', missing)
             self.assertNotIn("feGaussianBlur", missing)

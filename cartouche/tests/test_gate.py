@@ -107,12 +107,11 @@ class FixtureTests(unittest.TestCase):
     def test_hazy_cornea(self) -> None:
         report, svg = _scan("hazy")
         diag = report["glyph_diagnostics"]["fxnB_verify_human"]
-        self.assertEqual(diag["fidelity"], 0.30)
-        self.assertEqual(
-            diag["faults"],
-            ["DEGENERATE_CONSTANT_RETURN", "LOW_AST_DENSITY(0<4)"],
-        )
-        self.assertEqual(report["projection_residual"], 0.70)
+        # sealed or not (owner ruling 2026-10-24): a constant return is a sure fault; a short body is let through
+        self.assertEqual(diag["fidelity"], 0.0)
+        self.assertEqual(diag["faults"], ["DEGENERATE_CONSTANT_RETURN"])
+        self.assertEqual(diag["notes"], ["SHORT_BODY(0<4): let through"])
+        self.assertEqual(report["projection_residual"], 1.0)
         self.assertFalse(report["is_sealed"])
         self.assertEqual(report["active_bitmask"], 29)
         self.assertEqual(report["missing_bitmask_delta"], 2)
@@ -121,10 +120,10 @@ class FixtureTests(unittest.TestCase):
         warrant = report["closer_warrants"][0]
         self.assertEqual(warrant["warrant_type"], "CARTOUCHE_MALFORMED_GLYPH")
         self.assertEqual(warrant["cartouche_region"], "the mouth")
-        self.assertEqual(warrant["glyph_fidelity"], 0.30)
-        self.assertIn('stdDeviation="3.15"', svg)
+        self.assertEqual(warrant["glyph_fidelity"], 0.0)
+        self.assertNotIn("stdDeviation", svg)  # no partial blur: the sign is not sealed
         self.assertIn("fxnB_verify_human", svg)
-        self.assertIn("Projection Residual: 0.70", svg)
+        self.assertIn("Projection Residual: 1.00", svg)
         self.assertIn('fill="#f59e0b"', svg.split("<text", 1)[1])
 
     def test_return_true_is_not_a_stub(self) -> None:
@@ -302,11 +301,12 @@ class RuleTests(unittest.TestCase):
             )
             report = CartoucheScanner(master).scan_file(path)
         diag = report["glyph_diagnostics"]["fxnB_verify_human"]
-        self.assertEqual(diag["fidelity"], 0.10)
+        self.assertEqual(diag["fidelity"], 0.0)
         self.assertIn("MISSING_PARAMS(audio_frame)", diag["faults"])
         self.assertIn("DEGENERATE_CONSTANT_RETURN", diag["faults"])
         self.assertIn("SWALLOWED_BARE_EXCEPT", diag["faults"])
-        self.assertTrue(any(f.startswith("LOW_AST_DENSITY") for f in diag["faults"]))
+        self.assertFalse(any(f.startswith(("LOW_AST_DENSITY", "SHORT_BODY")) for f in diag["faults"]))
+        self.assertTrue(any(n.startswith("SHORT_BODY") for n in diag["notes"]))
 
     def test_jeopardy_hash_is_stable_and_fault_sensitive(self) -> None:
         report, _svg = _scan("hazy")
@@ -315,7 +315,7 @@ class RuleTests(unittest.TestCase):
         self.assertEqual(first, again["closer_warrants"][0]["double_jeopardy_hash"])
         self.assertEqual(len(first), 20)
         expected = hashlib.sha256(
-            b"agent_hazy_verify.py::MALFORMED::DEGENERATE_CONSTANT_RETURN,LOW_AST_DENSITY(0<4)::fxnB_verify_human"
+            b"agent_hazy_verify.py::MALFORMED::DEGENERATE_CONSTANT_RETURN::fxnB_verify_human"
         ).hexdigest()[:20]
         self.assertEqual(first, expected)
 

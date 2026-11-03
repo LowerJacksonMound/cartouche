@@ -18,13 +18,24 @@ a CLI subcommand or an MCP tool changes in a release pass; a pass proves and pac
 - [ ] README.md and QUICKSTART.md commands run as pasted; `install_cartouche_mcp.sh --print` prints the
       registration line for this tree's absolute path.
 - [ ] `cartouche-mcp.sh` is executable and `python3 -m cartouche.mcp` answers `tools/list` with exactly
-      `ct_watch ct_look ct_stop ct_hold`.
+      `ct_watch ct_look ct_stop ct_hold ct_chart ct_wanted ct_search ct_offer ct_withdraw` (since 0.2.0; 0.1.0 had the first four).
 
 ## Scan or lock change
 
 - [ ] The change was a proposal first, with a plant that splits.
 - [ ] Signer yes.
 - [ ] INTENT.md updated in the same pass; a new fault word went into MCP.md's `fault` list.
+
+## Ruling 2026-10-24: sealed or not
+
+Owner's ruling: a sign is sealed or it is not; hazy is retired. A constant return or a swallowing bare except is
+`template`; locked parameters that are gone are `missing`; a short body alone is let through (recorded as a note,
+never a fault). The law text in INTENT.md was amended by the owner's ruling, not to fit the code. The plant
+`counterfeit/hazy` is now `counterfeit/constant_return`, expecting `template`. The lock does not move.
+
+- [x] 2026-10-24 pass under the ruling: `plants/run_all.sh` 9 PASS / 0 FAIL; unit tests 133 OK; `cartouche selftest`
+      PASS on Python 3.9 and 3.14; fixture lock `cd093843aefe1778` unmoved. A live build of a 15-function agent behind
+      Closer ended sealed 15 of 15 and accepted (film take 4); the same code was 14 of 15 hazy before the ruling.
 
 ## Pass 2026-10-23 (release candidate; self-test, plants, front door and install added; no rule, hash, lock, CLI or tool changed)
 

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 
 def project_sign(svg: str, fidelity: float, broken: bool) -> str:
-    """Template, locked, hazy, missing, and skew. The drawing underneath can be any sign."""
+    """Sealed, or not: template, locked, missing, skew. The drawing underneath can be any sign."""
 
+    fidelity = 1.0 if fidelity >= 1.0 else 0.0  # sealed or not: no in-between drawing (owner ruling 2026-10-24)
     head, rest = svg.split(">", 1)
     inner = rest.rsplit("</svg>", 1)[0]
     head = head.replace('viewBox="0 0 64 64"', 'viewBox="-8 -10 80 84"')
@@ -24,11 +25,12 @@ def project_sign(svg: str, fidelity: float, broken: bool) -> str:
         else ""
     )
     haze = ' filter="url(#haze)"' if blur else ""
-    ghost = (
-        f'<g color="#30363d" stroke-dasharray="2 2" fill="none" opacity="0.85">{inner}</g>'
-    )
+    # the signs are filled glyphs: an unwritten sign is its outline only, a written one is filled
+    outline = 'fill="none" stroke="currentColor" stroke-width="0.9"'
+    ghost = f'<g color="#30363d" {outline} stroke-dasharray="2 2" opacity="0.85">{inner}</g>'
+    paint = outline if fidelity == 0.0 else 'fill="currentColor" stroke="none"'
     live = (
-        f'<g color="{color}" stroke-dasharray="{dash}" opacity="{opacity}"{haze}{transform}>{inner}</g>'
+        f'<g color="{color}" {paint} stroke-dasharray="{dash}" opacity="{opacity}"{haze}{transform}>{inner}</g>'
     )
     return f"{head}>{defs}{ghost}{live}</svg>"
 
@@ -42,27 +44,32 @@ def project_sign(svg: str, fidelity: float, broken: bool) -> str:
 
 TEMPLATE = "template"  # the function is a hollow stub: the signature, no body
 LOCKED = "locked"  # the request was edited after release; the spec no longer hashes to the lock
-HAZY = "hazy"  # the function is there but not clear: constant return, too thin, wrong params
 MISSING = "missing"  # the function is not there
 SKEW = "skew"  # a required edge is gone: the function never reaches the next one
 SYNTAX = "SYNTAX"  # the file does not parse
 
-DEFECTS: tuple[str, ...] = (TEMPLATE, LOCKED, HAZY, MISSING, SKEW)
+DEFECTS: tuple[str, ...] = (TEMPLATE, LOCKED, MISSING, SKEW)
 FAULT_WORDS: frozenset[str] = frozenset(DEFECTS) | {SYNTAX}
 
 _WARRANT_DEFECT: dict[str, str] = {
     "CARTOUCHE_MISSING_GLYPH": MISSING,
     "CARTOUCHE_COUNTERFEIT_STUB": TEMPLATE,
     "CARTOUCHE_TOPOLOGY_BREAK": SKEW,
-    "CARTOUCHE_MALFORMED_GLYPH": HAZY,
+    "CARTOUCHE_MALFORMED_GLYPH": TEMPLATE,
     "CARTOUCHE_UNPARSED": SYNTAX,
 }
 
 
-def defect_of(warrant_type: str | None) -> str:
-    """The one word for a scanner warrant. A malformed sign of any kind is hazy."""
+def defect_of(warrant_type: str | None, faults: list[str] | None = None) -> str | None:
+    """The one word for a scanner warrant, or None for one the scan does not recognize (let through).
 
-    return _WARRANT_DEFECT.get(warrant_type or "", HAZY)
+    A malformed sign is template (a fake-shaped body: constant returns, a swallowing bare except) unless the
+    locked parameters are gone, which is missing: the function as locked is not there.
+    """
+
+    if warrant_type == "CARTOUCHE_MALFORMED_GLYPH" and any(str(f).startswith("MISSING_PARAMS") for f in faults or []):
+        return MISSING
+    return _WARRANT_DEFECT.get(warrant_type or "")
 
 
 def issues_of(report: dict | None) -> list[dict]:
@@ -73,7 +80,9 @@ def issues_of(report: dict | None) -> list[dict]:
     rows: list[dict] = []
     for warrant in report.get("closer_warrants") or []:
         kind = warrant.get("warrant_type")
-        fault = defect_of(kind)
+        fault = defect_of(kind, warrant.get("faults"))
+        if fault is None:
+            continue  # not a fault the scan recognizes: let through
         if kind == "CARTOUCHE_MISSING_GLYPH":
             function = warrant.get("missing_primitive")
             detail = "MISSING_FUNCTION"

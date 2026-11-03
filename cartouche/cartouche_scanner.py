@@ -293,34 +293,31 @@ class CartoucheScanner:
                 )
             else:
                 invariants = glyph_meta.get("required_invariants", {})
-                fidelity = 1.0
+                # A sign is sealed or it is not (owner ruling 2026-10-24). Only faults the scan can be sure of
+                # count: the locked parameters are gone, every return is a constant, or a bare except swallows
+                # errors. A check that cannot tell (a short body may be correct) is let through, as a note.
                 faults: list[str] = []
+                notes: list[str] = []
 
                 req_params = invariants.get("required_params", [])
                 missing_params = [p for p in req_params if p not in fxn_info["arg_names"]]
                 if missing_params:
-                    fidelity -= 0.35
                     faults.append(f"MISSING_PARAMS({','.join(missing_params)})")
 
                 if invariants.get("forbid_constant_return", True) and fxn_info[
                     "only_constant_returns"
                 ]:
-                    fidelity -= 0.40
                     faults.append("DEGENERATE_CONSTANT_RETURN")
 
                 if invariants.get("forbid_bare_except", True) and fxn_info["has_bare_except"]:
-                    fidelity -= 0.25
                     faults.append("SWALLOWED_BARE_EXCEPT")
 
                 min_density = invariants.get("min_ast_nodes", 4)
                 if fxn_info["ast_density"] < min_density:
-                    fidelity -= 0.30
-                    faults.append(
-                        f"LOW_AST_DENSITY({fxn_info['ast_density']}<{min_density})"
-                    )
+                    notes.append(f"SHORT_BODY({fxn_info['ast_density']}<{min_density}): let through")
 
-                fidelity = round(max(0.10, fidelity), 2)
-                glyph_diagnostics[fxn_name] = {"fidelity": fidelity, "faults": faults}
+                fidelity = 0.0 if faults else 1.0
+                glyph_diagnostics[fxn_name] = {"fidelity": fidelity, "faults": faults, "notes": notes}
 
                 if fidelity == 1.0:
                     active_bitmask |= glyph_meta["bit_mask"]

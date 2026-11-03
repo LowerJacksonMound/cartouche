@@ -36,7 +36,7 @@ class SessionTests(unittest.TestCase):
         self.assertFalse(state["sealed"])
         self.assertEqual(len(state["issues"]), 1)
         line = state["issues"][0]
-        self.assertTrue(line.startswith("fault=hazy "), line)
+        self.assertTrue(line.startswith("fault=template "), line)
         self.assertIn("function=fxnB_verify_human", line)
         self.assertIn("sign=the mouth", line)
         self.assertIn("detail=DEGENERATE_CONSTANT_RETURN", line)

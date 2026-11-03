@@ -2,14 +2,17 @@
 
 `cartouche selftest` runs the unit tests, then walks the fixture request through the real
 CLI (fetch, fill, view, approve, release) and the real stdio MCP server (ct_watch, ct_look,
-ct_stop, ct_hold) as a client would, over JSON-RPC, in one temp dir. It then runs every plant
+ct_stop, ct_hold) as a client would, over JSON-RPC, in one temp dir. It runs the live page
+(`cartouche start` and `cartouche page`) over HTTP while a build is written one function at a
+time, and the gather (ct_chart, ct_wanted, ct_offer) with sign-off and release on the page.
+It then runs every plant
 under `plants/`. One line per check. The last line is `cartouche: selftest PASS` with exit 0,
 or the first failure is named and the exit is 1.
 
 `python3 -m cartouche.selftest --plants plants` runs only the plant folder. `plants/run_all.sh`
 calls that. A plant is a folder with Python files and an `expect.json`; `honest/` plants must
 seal, `counterfeit/` plants must be refused or reported with the faults they name: one of the
-five words (template, locked, hazy, missing, skew) per row, with the scanner's codes in `detail`.
+four words (template, locked, missing, skew) per row; a sign is sealed or it is not, with the scanner's codes in `detail`.
 
 Everything written lands under one temp dir, which is removed at the end. The unit tests are
 run with TMPDIR inside it so their own scratch dirs land there too.
@@ -242,7 +245,7 @@ class Server:
     def tools(self) -> list[str]:
         return [tool["name"] for tool in self.rpc("tools/list")["result"]["tools"]]
 
-    def call(self, name: str, **arguments: str) -> dict[str, Any]:
+    def call(self, name: str, **arguments: Any) -> dict[str, Any]:
         reply = self.rpc("tools/call", {"name": name, "arguments": arguments})
         result = reply.get("result")
         if result is None:
@@ -330,7 +333,7 @@ def _server_checks(paths: dict[str, Path], tmp: Path, say: Say) -> None:
 
     with Server(tmp) as server:
         names = server.tools()
-        if names != ["ct_watch", "ct_look", "ct_stop", "ct_hold"]:
+        if names != ["ct_watch", "ct_look", "ct_stop", "ct_hold", "ct_chart", "ct_wanted", "ct_search", "ct_offer", "ct_withdraw"]:
             raise Failure(f"tools/list: {names}")
         say("mcp tools/list", " ".join(names))
 
@@ -370,17 +373,17 @@ def _server_checks(paths: dict[str, Path], tmp: Path, say: Say) -> None:
         server.call("ct_stop")
         say("unwritten target", "waiting=true issues=0 target named")
 
-        # (b) the hazy agent: verify_human returns True
+        # (b) the constant-return agent: verify_human returns True (template)
         hazy = server.call("ct_watch", spec=spec, contract=contract, target=str(build / "hazy.py"))
         if hazy.get("sealed") is not False:
             raise Failure(f"ct_watch hazy: {hazy}")
-        row = _named(server.call("ct_look"), "fxnB_verify_human", "hazy", "DEGENERATE_CONSTANT_RETURN")
+        row = _named(server.call("ct_look"), "fxnB_verify_human", "template", "DEGENERATE_CONSTANT_RETURN")
         if not row.get("lines") or not row.get("directive") or not str(row.get("file", "")).endswith("hazy.py"):
             raise Failure(f"ct_look hazy: row is incomplete: {row}")
         stopped = server.call("ct_stop")
         if stopped.get("sealed") is not False or stopped.get("open", 0) < 1:
             raise Failure(f"ct_stop hazy: {stopped}")
-        say("hazy agent", f"sealed=false fxnB_verify_human fault={row['fault']} detail={row['detail']} lines={row['lines']}")
+        say("constant-return agent", f"sealed=false fxnB_verify_human fault={row['fault']} detail={row['detail']} lines={row['lines']}")
 
         # (b) the shifted-edge agent: verify_human no longer reaches transmit_request
         shifted = server.call("ct_watch", spec=spec, contract=contract, target=str(build / "shifted.py"))
@@ -447,6 +450,169 @@ def _server_checks(paths: dict[str, Path], tmp: Path, say: Say) -> None:
     say("release untouched", "the contract bytes are the ones released")
 
 
+def _page_checks(paths: dict[str, Path], tmp: Path, say: Say) -> None:
+    """`cartouche start` and `cartouche page`, as a user runs them: a sign fills per function written."""
+
+    import socket
+    import time
+    import urllib.request
+
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    work = tmp / "live"
+    work.mkdir()
+    target, session = work / "agent.py", work / "session.json"
+    parts = (FIXTURE / "agent_sealed.py").read_text(encoding="utf-8").split("\ndef ")
+    env = _env(tmp)
+    run = [sys.executable, "-m", "cartouche"]
+    watch = subprocess.Popen(
+        run + ["start", str(paths["spec"]), str(paths["contract"]), str(target), "--session", str(session), "--interval", "0.1"],
+        cwd=tmp, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    )
+    page = subprocess.Popen(
+        run + ["page", "--session", str(session), "--port", str(port)],
+        cwd=tmp, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    )
+    url = f"http://127.0.0.1:{port}/"
+
+    def state(predicate: Callable[[dict[str, Any]], bool], what: str) -> dict[str, Any]:
+        last: dict[str, Any] = {}
+        for _ in range(150):
+            try:
+                with urllib.request.urlopen(url + "state.json", timeout=2) as response:
+                    last = json.loads(response.read())
+                if predicate(last):
+                    return last
+            except OSError:
+                pass
+            time.sleep(0.1)
+        raise Failure(f"page: {what}; last state {last.get('state')} {last.get('signs_sealed')}/{last.get('signs_total')}")
+
+    try:
+        before = paths["contract"].read_text(encoding="utf-8")
+        state(lambda s: s.get("state") == "waiting", "never showed waiting before the build existed")
+        with urllib.request.urlopen(url, timeout=2) as response:
+            if "CARTOUCHE" not in response.read().decode("utf-8"):
+                raise Failure("page: / did not serve the cartouche page")
+        seen = []
+        for count in range(1, len(parts)):
+            target.write_text("\ndef ".join(parts[: count + 1]) + "\n", encoding="utf-8")
+            now = state(lambda s, c=count: s.get("signs_sealed") == c, f"{count} function(s) written but not {count} sign(s) sealed")
+            seen.append(f"{now['signs_sealed']}/{now['signs_total']}")
+        if now.get("state") != "sealed" or "<svg" not in now.get("svg", ""):
+            raise Failure(f"page: the whole build is written but the state is {now.get('state')}")
+        say("live page", f"{url} filled sign by sign: {' '.join(seen)} -> sealed")
+        target.write_text((FIXTURE / "agent_shifted_edge.py").read_text(encoding="utf-8"), encoding="utf-8")
+        drift = state(lambda s: any(r.get("fault") == "skew" for r in s.get("signs", [])), "a rerouted edge never showed as skew")
+        row = next(r for r in drift["signs"] if r.get("fault") == "skew")
+        say("live page drift", f"{row['function']} ({row['sign']}) shows skew; the watch stays up")
+        if paths["contract"].read_text(encoding="utf-8") != before:
+            raise Failure("page: the release changed while the page was up")
+        if sorted(p.name for p in work.iterdir()) != ["agent.py", "session.json"]:
+            raise Failure(f"page: unexpected files beside the build: {sorted(p.name for p in work.iterdir())}")
+        _need(cli(["stop", str(session)], tmp), 0, "stop")
+        state(lambda s: s.get("running") is False, "the page never showed the watch stopped")
+        say("live page stop", "cartouche stop ended the watch; the page shows it stopped")
+    finally:
+        page.terminate()
+        for proc in (watch, page):
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+
+
+def _gather_checks(tmp: Path, say: Say) -> None:
+    """The gather a user runs: chart, wanted, offer over MCP; sign-off and release over the page."""
+
+    import socket
+    import time
+    import urllib.request
+
+    if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
+        say("gather", "skipped: ffmpeg is not installed (offers need it to cut clips)")
+        return
+    work = tmp / "gather"
+    work.mkdir()
+    chart = json.loads((FIXTURE / "domain_spec.json").read_text(encoding="utf-8"))
+    chart["request"] = "a phone agent that books a service appointment"
+    with Server(tmp) as server:
+        saved = server.call("ct_chart", chart=chart, out=str(work / "spec.json"))
+        if not saved.get("ok"):
+            raise Failure(f"ct_chart refused the fixture chart: {saved.get('problems')}")
+        bad = server.call("ct_chart", chart={**chart, "root_id": "nowhere"}, out=str(work / "bad.json"))
+        if bad.get("ok") or (work / "bad.json").exists():
+            raise Failure("ct_chart saved a chart whose root is not a node")
+        lines = server.call("ct_wanted", spec=str(work / "spec.json"))["lines"]
+        clips = []
+        for k, line in enumerate(lines):
+            for n in range(2):
+                src = work / f"src_{k}_{n}.mp4"
+                subprocess.run(
+                    ["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi", "-i", f"color=c=0x{k*40:02x}{n*90:02x}60:s=320x180:d=2:r=15",
+                     "-c:v", "libx264", "-pix_fmt", "yuv420p", str(src)], check=True,
+                )
+                clips.append({"phrase": line["phrase"], "source": "file", "url": str(src), "start": 0, "seconds": 1.5, "why": "selftest"})
+        offered = server.call("ct_offer", spec=str(work / "spec.json"), clips=clips)
+        if offered.get("offered") != len(clips):
+            raise Failure(f"ct_offer: {offered.get('offered')} of {len(clips)} offered")
+        names = server.tools()
+    say("gather tools", f"ct_chart saved the chart and refused a broken one; ct_wanted {len(lines)} lines; ct_offer {len(clips)} candidates")
+    if "ct_choose" in names or "ct_approve" in names:
+        raise Failure("an MCP tool can choose or approve a clip; only the person may")
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    port = sock.getsockname()[1]
+    sock.close()
+    page = subprocess.Popen(
+        [sys.executable, "-m", "cartouche", "page", "--request", str(work / "spec.json"), "--port", str(port)],
+        cwd=tmp, env=_env(tmp), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+    )
+    url = f"http://127.0.0.1:{port}/"
+
+    def get() -> dict[str, Any]:
+        for _ in range(100):
+            try:
+                with urllib.request.urlopen(url + "state.json", timeout=5) as response:
+                    return json.loads(response.read())
+            except OSError:
+                time.sleep(0.1)
+        raise Failure("page --request never answered")
+
+    def post(path: str, body: dict[str, Any]) -> dict[str, Any]:
+        request = urllib.request.Request(url + path, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return json.loads(response.read())
+
+    try:
+        state = get()
+        if state["stage"] != "gather":
+            raise Failure(f"page --request opened at {state['stage']}, not gather")
+        if post("release", {}).get("released"):
+            raise Failure("release went through before every line was signed")
+        for line in state["lines"]:
+            signed = post("signoff", {"phrase": line["phrase"], "candidate": line["candidates"][1]["id"]})
+            if not signed.get("signed"):
+                raise Failure(f"sign-off refused: {signed}")
+        released = post("release", {})
+        if not released.get("released"):
+            raise Failure(f"release refused: {released}")
+        state = get()
+        if state["stage"] != "watch" or state["watch"]["signs_total"] != len(lines):
+            raise Failure(f"after release the page is at {state['stage']}")
+        if post("signoff", {"phrase": lines[0]["phrase"], "candidate": "x"}).get("signed"):
+            raise Failure("a sign-off went through after release")
+        say("sign-off page", f"{len(lines)} lines signed off on the page, released (lock {released['cartouche_sha256'][:16]}...), now watching")
+    finally:
+        page.terminate()
+        try:
+            page.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            page.kill()
+
+
 def selftest() -> int:
     def say(name: str, detail: str) -> None:
         print(f"ok   {name}: {detail}")
@@ -458,6 +624,8 @@ def selftest() -> int:
         _unit_tests(tmp, say)
         paths = build_release(tmp, say)
         _server_checks(paths, tmp, say)
+        _page_checks(paths, tmp, say)
+        _gather_checks(tmp, say)
         if PLANTS.is_dir():
             passed, failed = run_plants(PLANTS, tmp / "plants", quiet=True)
             if failed or not passed:

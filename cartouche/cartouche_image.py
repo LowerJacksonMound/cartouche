@@ -15,8 +15,12 @@ def _place(svg: str, x: int, y: int, size: int, name: str) -> str:
     return f'{head} x="{x}" y="{y}" width="{size}" height="{size}"><title>{_xml(name)}</title>{rest}'
 
 
-def render_cartouche(marked: dict[str, Any]) -> dict[str, Any]:
-    """One ring per part. The seal is the part sign. The signs inside are the functions, in order."""
+def render_cartouche(marked: dict[str, Any], ring_colors: list[str] | None = None) -> dict[str, Any]:
+    """One ring per part. The seal is the part sign. The signs inside are the functions, in order.
+
+    `ring_colors` gives each ring its own stroke (the live view closes a ring in green when every
+    sign in it is sealed). Left out, every ring draws in currentColor, as before.
+    """
 
     columns: list[str] = []
     bands: list[dict[str, Any]] = []
@@ -24,8 +28,9 @@ def render_cartouche(marked: dict[str, Any]) -> dict[str, Any]:
     column_width = 96
     gap = 20
     height = 0
-    for band in marked["cartouches"]:
+    for position, band in enumerate(marked["cartouches"]):
         functions = band["functions"]
+        ring = ring_colors[position] if ring_colors and position < len(ring_colors) else "currentColor"
         inner_top = 72
         sign_size = 48
         step = 56
@@ -36,7 +41,7 @@ def render_cartouche(marked: dict[str, Any]) -> dict[str, Any]:
         body = [
             (
                 f'<rect x="{oval_x}" y="{inner_top}" width="80" height="{oval_height}" '
-                f'rx="40" fill="none" stroke="currentColor" stroke-width="3"/>'
+                f'rx="40" fill="none" stroke="{ring}" stroke-width="3"/>'
             ),
             _place(band["svg"], cursor + 20, 4, 56, band["name"]),
         ]

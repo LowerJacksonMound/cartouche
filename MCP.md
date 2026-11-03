@@ -2,7 +2,7 @@
 
 The build agent calls this. The CLI is still there. This process does not start CLOSER or CodeRadar, and it does not rewrite a release.
 
-One local stdio process. No port. stdout is the protocol, so the server does not print the watch there.
+One local stdio process. No port. The page (`cartouche page`) is a separate command; the server never opens one. stdout is the protocol, so the server does not print the watch there.
 
 From the `CARTOUCHE` folder:
 
@@ -10,7 +10,7 @@ From the `CARTOUCHE` folder:
 python3 -m cartouche.mcp
 ```
 
-or `sh cartouche-mcp.sh` from that same folder. Both need Python 3.10 or newer. There is no extra package.
+or `sh cartouche-mcp.sh` from that same folder. Both need Python 3.9 or newer. There is no extra package.
 
 A client entry is the script, or `python3` with args `-m cartouche.mcp` and the `CARTOUCHE` folder on `PYTHONPATH`. No arguments. The target is not in the entry. `ct_watch` names it.
 
@@ -22,6 +22,20 @@ A client entry is the script, or `python3` with args `-m cartouche.mcp` and the 
 | `ct_look` | no arguments. One scan of that build. |
 | `ct_stop` | no arguments. Reports what is still open, then drops the bind. The process stays up. |
 | `ct_hold` | `spec`, `contract`, `target`. The same comparison, once, with no watch. |
+| `ct_chart` | `chart`, `out`. Checks a chart the agent drafted from the person's plain request; saves it to `out` only if it passes, else lists the problems. |
+| `ct_wanted` | `spec`. Every line a path reaches: function, edge case or not, sign-off status, candidates so far, and its drop folder `incoming/<function>/`. Reserves each line's shelf slot and offers any clip already dropped. |
+| `ct_search` | `searches` (one per line: `source`, `query`, optional `spoken`, `limit`), optional `creative_commons`. Runs them in parallel. `spoken` reads each YouTube hit's subtitles and names the seconds where those words are said. Downloads no video. |
+| `ct_offer` | `spec`, `clips` (each: `phrase`, `source`, `url`, `start`, `seconds` up to 20, `why`). Cuts every candidate in parallel into `candidates/` beside the spec and records its source and licence. |
+| `ct_withdraw` | `spec`, `withdraw` (each: `phrase`, `id`). Takes back offered candidates that do not fit. Refused for a signed-off line. |
+
+Rendered clips skip search: write them into a line's `incoming/<function>/` folder (sidecar `<clip>.json`: why, licence, title, author). The page offers them on its next poll.
+
+The gather tools are the only AI step. No tool can choose, sign off, or release a clip: the person does that on
+`cartouche page --request <spec>`, which runs Cartouche's own `view`, `approve` and `release`. After sign-off no AI
+takes part: the lock, the scan and the watch are plain code. Sources are `youtube` (Creative Commons only unless
+`creative_commons` is false), `archive` (Internet Archive), `pexels` (needs `PEXELS_API_KEY`), and `file`. YouTube
+needs `yt-dlp` and `ffmpeg`. Set `CARTOUCHE_YTDLP_COOKIES` to `browser:chrome` or a cookies.txt path to send your
+YouTube login, which avoids most rate limits; it is off by default.
 
 `spec` is the request JSON. `contract` is the release JSON from `cartouche release`. `target` is one Python file or a directory of them. Absolute paths. A relative path is resolved from the directory the server was started in.
 

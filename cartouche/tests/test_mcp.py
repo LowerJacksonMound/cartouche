@@ -16,7 +16,7 @@ from cartouche.build_release import release
 from cartouche.clip_library import LibraryFiller, approve, empty_dictionary
 from cartouche.domain import INTERACTION, domain_spec, fixture_path
 from cartouche.mcp_tools import Watch, issues_of
-from cartouche.project_symbol import DEFECTS, FAULT_WORDS, HAZY, LOCKED, MISSING, SKEW, SYNTAX, TEMPLATE
+from cartouche.project_symbol import DEFECTS, FAULT_WORDS, LOCKED, MISSING, SKEW, SYNTAX, TEMPLATE
 from cartouche.tests.signoff import see_shelf
 
 
@@ -39,7 +39,7 @@ def _paths(root: Path, contract: dict | None = None) -> tuple[Path, Path]:
 
 
 class McpToolTests(unittest.TestCase):
-    def test_a_hazy_function_names_the_fault(self) -> None:
+    def test_a_constant_return_names_the_fault_template(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             spec, contract = _paths(Path(tmp))
             before = contract.read_text(encoding="utf-8")
@@ -48,9 +48,9 @@ class McpToolTests(unittest.TestCase):
             self.assertGreater(answer["open"], 0)
             named = [row for row in answer["issues"] if row["function"] == "fxnB_verify_human"]
             self.assertTrue(named)
-            self.assertEqual(named[0]["fault"], HAZY)
+            self.assertEqual(named[0]["fault"], TEMPLATE)
             self.assertIn("DEGENERATE_CONSTANT_RETURN", named[0]["detail"])
-            self.assertIn("LOW_AST_DENSITY(0<4)", named[0]["detail"])
+            self.assertNotIn("LOW_AST_DENSITY", named[0]["detail"])  # a short body is let through, never a fault
             self.assertIn(fixture_path("hazy").name, named[0]["file"])
             self.assertEqual(answer["target"], str(fixture_path("hazy")))
             self.assertTrue(named[0]["directive"])
@@ -148,7 +148,7 @@ class McpToolTests(unittest.TestCase):
         }
         rows = issues_of(report)
         self.assertEqual(rows[0]["function"], "fxnB_verify_human")
-        self.assertEqual(rows[0]["fault"], HAZY)
+        self.assertEqual(rows[0]["fault"], TEMPLATE)
         self.assertEqual(rows[0]["detail"], "DEGENERATE_CONSTANT_RETURN")
         self.assertNotEqual(rows[0]["fault"], "the mouth")
 
@@ -175,8 +175,8 @@ class McpToolTests(unittest.TestCase):
     def test_every_fault_a_scan_can_emit_is_one_of_the_five_words_or_syntax(self) -> None:
         """INTENT.md names five defects. Every scanned row carries exactly one of them, or SYNTAX."""
 
-        self.assertEqual(set(DEFECTS), {TEMPLATE, LOCKED, HAZY, MISSING, SKEW})
-        self.assertEqual(FAULT_WORDS, {TEMPLATE, LOCKED, HAZY, MISSING, SKEW, SYNTAX})
+        self.assertEqual(set(DEFECTS), {TEMPLATE, LOCKED, MISSING, SKEW})
+        self.assertEqual(FAULT_WORDS, {TEMPLATE, LOCKED, MISSING, SKEW, SYNTAX})
         seen: set[str] = set()
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -251,7 +251,7 @@ class McpStdioTests(unittest.TestCase):
             self.assertIn("ct_look", started["result"]["instructions"])
             listed = rpc(2, "tools/list")
             names = [tool["name"] for tool in listed["result"]["tools"]]
-            self.assertEqual(names, ["ct_watch", "ct_look", "ct_stop", "ct_hold"])
+            self.assertEqual(names, ["ct_watch", "ct_look", "ct_stop", "ct_hold", "ct_chart", "ct_wanted", "ct_search", "ct_offer", "ct_withdraw"])
             unbound = rpc(3, "tools/call", {"name": "ct_look", "arguments": {}})
             self.assertTrue(unbound["result"]["isError"])
             with tempfile.TemporaryDirectory() as tmp:

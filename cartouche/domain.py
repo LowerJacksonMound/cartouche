@@ -59,8 +59,8 @@ FIXTURES: list[tuple[str, str, str]] = [
     ),
     (
         "hazy",
-        "Hazy cornea",
-        "verify_human returns True. The cornea should blur, not drop out.",
+        "Constant cornea",
+        "verify_human returns True: a fake-shaped body. That sign is not sealed: template.",
     ),
     (
         "shifted",

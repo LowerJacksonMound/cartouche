@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cartouche-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Intent lock for AI-assisted builds: watch a clip per task, sign it, and seal the build only when the tree is the signed intent."
 readme = "README.md"
 license = { file = "LICENSE" }

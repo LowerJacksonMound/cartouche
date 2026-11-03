@@ -1,1 +1,0 @@
-{"sealed": false, "faults": ["hazy"], "details": ["DEGENERATE_CONSTANT_RETURN"], "functions": ["fxnB_verify_human"], "reason": "scan", "note": "verify_human is `return True`. Hazy: the sign is there but not clear."}

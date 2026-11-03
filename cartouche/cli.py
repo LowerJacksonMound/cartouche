@@ -317,14 +317,59 @@ def cmd_gate(track_path: Path, target: Path, out_dir: Path) -> int:
     return 0 if report["is_sealed"] else 2
 
 
-def cmd_start(spec_path: Path, contract_path: Path, target: Path, session_path: Path) -> int:
+def cmd_start(
+    spec_path: Path, contract_path: Path, target: Path, session_path: Path, interval: float = 1.0
+) -> int:
+    if interval <= 0:
+        raise ValueError("--interval must be more than 0 seconds")
     contract_text = contract_path.read_text(encoding="utf-8")
     code = run_session(
-        _load(spec_path), json.loads(contract_text), target, session_path, spec_path.parent
+        _load(spec_path), json.loads(contract_text), target, session_path, spec_path.parent, interval=interval
     )
     if contract_path.read_text(encoding="utf-8") != contract_text:
         raise RuntimeError("start rewrote the release")
     return code
+
+
+def cmd_page(
+    spec_path: Path | None,
+    contract_path: Path | None,
+    target: Path | None,
+    session_path: Path | None,
+    port: int,
+    request_path: Path | None = None,
+    build_path: Path | None = None,
+) -> int:
+    from cartouche.page import build_reader, serve, session_reader
+
+    given = [spec_path, contract_path, target]
+    if request_path is not None:
+        from cartouche.studio import Studio, serve_studio
+
+        if any(given) or session_path is not None:
+            raise ValueError("page --request takes no other paths (use --target for the build)")
+        if not request_path.is_file():
+            raise ValueError(f"no such request spec: {request_path}")
+        studio = Studio(request_path, build_path)
+        serve_studio(studio, port, ready=lambda url: print(f"page={url} source=request {request_path}", flush=True))
+        return 0
+    if session_path is not None:
+        if any(given):
+            raise ValueError("page takes --session, or spec contract target, not both")
+        read = session_reader(session_path)
+        source = f"session {session_path}"
+    elif all(given):
+        assert spec_path is not None and contract_path is not None and target is not None
+        if not spec_path.is_file():
+            raise ValueError(f"no such spec: {spec_path}")
+        if not contract_path.is_file():
+            raise ValueError(f"no such release: {contract_path}")
+        read = build_reader(spec_path, contract_path, target)
+        source = f"build {target}"
+    else:
+        raise ValueError("page needs --session SESSION, or spec contract target")
+    serve(read, port, ready=lambda url: print(f"page={url} source={source}", flush=True))
+    return 0
 
 
 def cmd_stop(session_path: Path) -> int:
@@ -453,6 +498,16 @@ def main(argv: list[str] | None = None) -> int:
     start_p.add_argument("contract", type=Path)
     start_p.add_argument("target", type=Path)
     start_p.add_argument("--session", type=Path, required=True)
+    start_p.add_argument("--interval", type=float, default=1.0, help="seconds between looks (default 1)")
+
+    page_p = sub.add_parser("page", help="serve the live cartouche on 127.0.0.1; it only reads")
+    page_p.add_argument("spec", type=Path, nargs="?")
+    page_p.add_argument("contract", type=Path, nargs="?")
+    page_p.add_argument("target", type=Path, nargs="?")
+    page_p.add_argument("--session", type=Path, help="follow the session file `cartouche start` writes")
+    page_p.add_argument("--request", type=Path, help="the whole run of one request: gather, sign off, release, watch")
+    page_p.add_argument("--target", dest="target_build", type=Path, help="with --request: the build to watch (default REQUEST/build)")
+    page_p.add_argument("--port", type=int, default=8790)
 
     stop_p = sub.add_parser("stop")
     stop_p.add_argument("session", type=Path)
@@ -496,7 +551,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.cmd == "image":
             return cmd_image(args.spec, args.dictionary, args.out)
         if args.cmd == "start":
-            return cmd_start(args.spec, args.contract, args.target, args.session)
+            return cmd_start(args.spec, args.contract, args.target, args.session, args.interval)
+        if args.cmd == "page":
+            return cmd_page(args.spec, args.contract, args.target, args.session, args.port, args.request, args.target_build)
         if args.cmd == "stop":
             return cmd_stop(args.session)
         if args.cmd == "selftest":
