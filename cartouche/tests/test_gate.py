@@ -291,6 +291,35 @@ class RuleTests(unittest.TestCase):
             report = CartoucheScanner(master).scan_file(path)
         self.assertEqual(sorted(report["broken_edges"]), [["fxn_a", "fxn_b"], ["fxn_b", "fxn_a"]])
 
+    def test_a_test_file_sequencing_both_ends_does_not_satisfy_the_edge(self) -> None:
+        """Only a function in the caller's own file may own the sequence (unknowns 03, 2026-11-03)."""
+        track = {
+            "domain_id": "owner",
+            "required_primitives": {"fxn_a": "a", "fxn_b": "b"},
+            "required_edges": [["fxn_a", "fxn_b"]],
+            "heard_edges": [["fxn_a", "fxn_b", ["the step is taken"]]],
+            "glyph_slots": {"fxn_a": 0, "fxn_b": 1},
+            "primitive_params": {"fxn_a": ["x"], "fxn_b": ["x"]},
+            "primitive_invariants": {},
+        }
+        master = CartoucheCompiler(track).compile_cartouche()
+        app = "from lib import fxn_b as do\ndef fxn_a(x):\n    return do(x)\n"
+        lib = "def fxn_b(x):\n    return x + 1\n"
+        seq = "def test_both(x):\n    for s in (1, 2):\n        fxn_a(s)\n        fxn_b(s)\n"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "app.py").write_text(app, encoding="utf-8")
+            (root / "lib.py").write_text(lib, encoding="utf-8")
+            (root / "tests").mkdir()
+            (root / "tests" / "test_app.py").write_text("from app import fxn_a\nfrom lib import fxn_b\n" + seq, encoding="utf-8")
+            report = CartoucheScanner(master).scan_tree(root)
+            self.assertEqual(report["broken_edges"], [["fxn_a", "fxn_b"]], report)
+            # the same sequence inside the caller's own file is the app taking the edge
+            (root / "app.py").write_text(app + seq.replace("test_both", "run_both"), encoding="utf-8")
+            report = CartoucheScanner(master).scan_tree(root)
+        self.assertEqual(report["broken_edges"], [])
+        self.assertTrue(report["is_sealed"], report)
+
     def test_missing_params_bare_except_and_floor(self) -> None:
         track = signal_track()
         master = CartoucheCompiler(track).compile_cartouche()

@@ -433,15 +433,16 @@ class CartoucheScanner:
             direct_edge = (caller, callee) in edges
             # "Sequenced with": one function calls the caller and reaches the callee, directly or through the
             # turn function that owns the loop (owner ruling 2026-11-03: start_round -> take_turn -> ask_question).
-            orchestrated_edge = any(
-                (orch, caller) in edges and reaches(orch, callee)
-                for orch in extractor.defined_functions
-            )
+            # The owner must live in the file that defines the caller (ruling 2026-11-03, unknowns 03): a test
+            # that calls both ends in sequence is not the app taking the edge.
+            owners = [f for f in extractor.defined_functions if home(f) == home(caller)]
+            orchestrated_edge = any((orch, caller) in edges and reaches(orch, callee) for orch in owners)
             # A heard edge is the other party's next line; a function that owns a loop and reaches both ends
             # drives that order from what it hears, which the call graph does not show (ruling 2026-11-03, counter).
             loop_edge = (caller, callee) in heard and any(
                 (loop == caller or reaches(loop, caller)) and (loop == callee or reaches(loop, callee))
                 for loop in extractor.loop_functions
+                if loop in owners
             )
             if direct_edge or orchestrated_edge or loop_edge:
                 continue
