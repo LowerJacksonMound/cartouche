@@ -2,6 +2,15 @@
 
 All notable changes to Cartouche are recorded here. The format follows Keep a Changelog; versions follow 0.x semantics, where a minor bump may break.
 
+## [Unreleased]
+
+### Changed
+- `ct_search` (YouTube) over-fetches three ids per hit wanted, drops any title written in another script before
+  fetching anything, reads subtitles for the rest, and returns the hits best spoken moment first. The unsubtitled
+  trail behind them in YouTube's order, each marked. Measured on one query: 30 listed, 1 dropped by title, the ten
+  returned led by the five that carry English subtitles; before, four of ten. A search takes about three times as
+  long. The gather instructions no longer ask the agent to check the title's language.
+
 ## [0.2.0] - 2026-10-23
 
 ### Added

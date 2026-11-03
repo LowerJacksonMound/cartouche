@@ -315,3 +315,19 @@ class HeardTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SearchHoning(unittest.TestCase):
+    def test_english_title_drops_other_scripts(self):
+        from cartouche.gather import english_title
+        self.assertTrue(english_title("How to play Minesweeper"))
+        self.assertTrue(english_title("Café résumé: naïve façade — 100% ok!"))
+        self.assertFalse(english_title("ドライブスルーで注文 take your time"))
+        self.assertFalse(english_title("得来速 drive thru"))
+        self.assertFalse(english_title("Как играть в сапёра"))
+
+    def test_rank_by_moment_puts_best_match_first(self):
+        from cartouche.gather import rank_by_moment
+        hits = [{"url": "a"}, {"url": "b", "moments": [{"match": 0.5}]}, {"url": "c", "moments": [{"match": 0.9}, {"match": 0.2}]},
+                {"url": "d", "moments": []}]
+        self.assertEqual([h["url"] for h in rank_by_moment(hits)], ["c", "b", "a", "d"])

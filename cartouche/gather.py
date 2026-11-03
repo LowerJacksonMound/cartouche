@@ -557,6 +557,24 @@ def youtube_search_url(query: str, creative_commons: bool = True) -> str:
     return f"https://www.youtube.com/results?search_query={q}" + ("&sp=EgIwAQ%253D%253D" if creative_commons else "")
 
 
+OVERFETCH = 3  # YouTube ids listed per hit wanted; the subtitle pass then keeps the ones that can be offered
+_NON_LATIN = re.compile(r"[\u0370-\u03ff\u0400-\u04ff\u0590-\u06ff\u0e00-\u0e7f\u1100-\u11ff\u3040-\u30ff\u3130-\u318f\u4e00-\u9fff\uac00-\ud7af]")
+
+
+def english_title(title: str) -> bool:
+    """False for a title written in another script (CJK, Cyrillic, Greek, Hebrew, Arabic, Thai, Hangul). A hit's title
+    is known before anything is fetched, so a foreign-language video is dropped at no cost. An English title over
+    foreign speech still gets through; the subtitle pass and the person's eyes catch that."""
+    return not _NON_LATIN.search(title)
+
+
+def rank_by_moment(hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Hits with a spoken moment first, best match first; the unsubtitled trail in YouTube's order."""
+    def key(hit: dict[str, Any]) -> tuple[int, float]:
+        moments = hit.get("moments") or []
+        return (0, -max(m["match"] for m in moments)) if moments else (1, 0.0)
+    return sorted(hits, key=key)
+
 def search(
     source: str, query: str, limit: int = 8, creative_commons: bool = True, api_key: str = "", spoken_words: str = ""
 ) -> list[dict[str, Any]]:
@@ -567,24 +585,26 @@ def search(
     """
 
     if source == "youtube":
+        # Over-fetch: more than half of YouTube's hits carry no English subtitles and can never be offered.
         out = subprocess.run(
-            ytdlp("--flat-playlist", "--playlist-end", str(limit),
+            ytdlp("--flat-playlist", "--playlist-end", str(limit * OVERFETCH),
                   "--print", "%(id)s\t%(duration)s\t%(title)s", youtube_search_url(query, creative_commons)),
             capture_output=True, text=True, timeout=120,
         )
         hits = []
         for line in out.stdout.splitlines():
             parts = line.split("\t")
-            if len(parts) == 3:
+            if len(parts) == 3 and english_title(parts[2]):
                 hits.append({"url": f"https://www.youtube.com/watch?v={parts[0]}", "seconds": parts[1], "title": parts[2],
                              "licence": "Creative Commons (search filter)" if creative_commons else "check before use"})
-        if spoken_words and hits:
-            found = spoken_many([hit["url"] for hit in hits], spoken_words)
-            for hit in hits:
-                hit["moments"] = found[hit["url"]]["moments"]
-                if found[hit["url"]].get("reason"):
-                    hit["subtitles"] = found[hit["url"]]["reason"]
-        return hits
+        if not spoken_words:
+            return hits[:limit]
+        found = spoken_many([hit["url"] for hit in hits], spoken_words) if hits else {}
+        for hit in hits:
+            hit["moments"] = found[hit["url"]]["moments"]
+            if found[hit["url"]].get("reason"):
+                hit["subtitles"] = found[hit["url"]]["reason"]
+        return rank_by_moment(hits)[:limit]
     if source == "archive":
         q = urllib.parse.quote(f"({query}) AND mediatype:(movies)")
         with urllib.request.urlopen(
