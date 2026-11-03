@@ -26,8 +26,10 @@ from typing import Any, Callable
 
 from cartouche import gather
 from cartouche.build_release import release
+from cartouche.cartouche_compiler import CartoucheCompiler
 from cartouche.clip_library import approve, load_dictionary, save_dictionary, view
 from cartouche.page import build_reader
+from cartouche.signal_stitcher import SignalStitcher
 
 
 class Studio:
@@ -47,7 +49,23 @@ class Studio:
         if not self.contract_path.is_file():
             return None
         contract = json.loads(self.contract_path.read_text(encoding="utf-8"))
-        return contract if contract.get("released") is True else None
+        if contract.get("released") is not True:
+            return None
+        if contract.get("cartouche_sha256") != self._spec_sha():
+            # The chart changed after release: the old lock is kept beside the new one, and the page goes
+            # back to sign-off and release instead of showing a lock the spec no longer hashes to.
+            aside = self.contract_path.with_name(f"build_input.{contract['cartouche_sha256'][:8]}.json")
+            self.contract_path.rename(aside)
+            self._watch = None
+            return None
+        return contract
+
+    def _spec_sha(self) -> str:
+        stamp = self.spec_path.stat().st_mtime_ns
+        if getattr(self, "_sha_at", None) != stamp:
+            track = SignalStitcher(self.spec(), base_dir=self.base).compile_montage_and_signals()
+            self._sha, self._sha_at = CartoucheCompiler(track).compile_cartouche()["cartouche_sha256"], stamp
+        return self._sha
 
     def state(self) -> dict[str, Any]:
         with self.lock:
@@ -298,11 +316,15 @@ function steps(s){const st=s.stage, signed=s.lines.filter(l=>l.status==='approve
 async function post(url,body){busy=true;try{return await (await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})})).json()}finally{busy=false}}
 async function signOff(phrase,id,btn){btn.disabled=true;btn.textContent='signing off…';const r=await post('signoff',{phrase,candidate:id});
   if(!r.signed){btn.disabled=false;btn.textContent='sign off this clip';btn.insertAdjacentHTML('afterend',`<div class="msg">${esc(r.reason)}</div>`)} built='';tick(true)}
+function signable(s){return (s.lines||[]).filter(l=>l.status!=='approved'&&l.status!=='reused').map(l=>({phrase:l.phrase,ids:l.candidates.filter(c=>watched.has(l.phrase+'|'+c.id)).map(c=>c.id)})).filter(x=>x.ids.length===1)}
+async function signAll(btn){btn.disabled=true;for(const x of signable(lastState)){const r=await post('signoff',{phrase:x.phrase,candidate:x.ids[0]});if(!r.signed){alertBox(r.reason);break}}built='';tick(true)}
 async function doRelease(btn){btn.disabled=true;const r=await post('release');if(!r.released){btn.disabled=false;alertBox((r.blocks||[]).join('\n')||r.reason)}built='';tick(true)}
 function alertBox(t){document.getElementById('relmsg').textContent=t}
 function gatherView(s){
   const rel=s.stage==='release'?`<div class="rel"><button onclick="doRelease(this)">release: lock these signed clips</button><span id="relmsg" class="count">every path is signed (${esc(s.counts.paths_text)})</span></div>`:'';
-  return rel+s.lines.map(l=>{const signed=l.status==='approved'||l.status==='reused';
+  const n=s.stage==='gather'?signable(s).length:0;
+  const all=n>1?`<div class="rel"><button onclick="signAll(this)">sign off all ${n} clips you watched through</button><span id="relmsg" class="count">one watched clip per line; lines with two watched clips are left for you</span></div>`:'';
+  return rel+all+s.lines.map(l=>{const signed=l.status==='approved'||l.status==='reused';
     const short=t=>'“'+esc(t.length>38?t.slice(0,36)+'…':t)+'”';
     const where=l.instead_of?`<div class="tree">edge case, instead of ${short(l.instead_of)} · after ${l.after.map(short).join(' or ')}</div>`
       :((l.heard_before||[]).length?`<div class="tree">when they say ${l.heard_before.map(short).join(' or ')}</div>`

@@ -58,6 +58,7 @@ class Watch:
         self.contract_path = contract_path
         self.target = target_path
         looked = self._from_probe(probe, target_path)
+        looked["summary"] = summary_of(looked)
         looked["bound"] = True
         return looked
 
@@ -176,6 +177,28 @@ class Watch:
             "open": len(issues),
             "issues": issues,
         }
+
+
+def summary_of(looked: dict[str, Any]) -> str:
+    """One plain sentence a person can read without the issue rows or the run log."""
+
+    where = Path(str(looked.get("target", ""))).name or "the target"
+    if looked.get("reason") == "unreleased":
+        return "Not watched: the request is not signed off and released yet."
+    if looked.get("reason") == "intent":
+        return "Locked: the request was changed after release; release it again on the page."
+    if looked.get("waiting"):
+        return f"Waiting: nothing is written at {where} yet."
+    issues = looked.get("issues") or []
+    if not issues:
+        return f"Sealed: every locked line and edge is in {where}."
+    named = "; ".join(
+        f"{i['fault']} in {i['function'] or Path(str(i['file'])).name}"
+        + (f" line {i['lines'][0]}" if i.get("lines") else "")
+        for i in issues[:3]
+    )
+    more = f" and {len(issues) - 3} more" if len(issues) > 3 else ""
+    return f"Not sealed: {len(issues)} issue{'s' if len(issues) != 1 else ''}: {named}{more}."
 
 
 WATCH = Watch()

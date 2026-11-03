@@ -278,3 +278,15 @@ class McpStdioTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SummaryLine(unittest.TestCase):
+    def test_summary_is_one_sentence_for_each_verdict(self) -> None:
+        from cartouche.mcp_tools import summary_of
+
+        row = {"fault": "skew", "function": "step", "file": "/x/app.py", "lines": [3, 3]}
+        self.assertEqual(summary_of({"reason": "scan", "target": "/x/app.py", "issues": []}), "Sealed: every locked line and edge is in app.py.")
+        self.assertEqual(summary_of({"reason": "scan", "target": "/x/app.py", "issues": [row]}), "Not sealed: 1 issue: skew in step line 3.")
+        self.assertTrue(summary_of({"reason": "scan", "target": "/x/b", "waiting": True}).startswith("Waiting:"))
+        self.assertTrue(summary_of({"reason": "intent"}).startswith("Locked:"))
+        self.assertTrue(summary_of({"reason": "unreleased"}).startswith("Not watched:"))
