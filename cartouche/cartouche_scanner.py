@@ -61,7 +61,12 @@ class ASTTopologyExtractor(ast.NodeVisitor):
             isinstance(m, ast.Name) and m.id in arg_names
             for n in sub_nodes if isinstance(n, ast.Assign) for m in ast.walk(n.value)
         )
-        only_constant_returns = all_constant and (len(set(map(repr, constant_values))) <= 1 or not reads_param)
+        # A raise guarded by a test on a parameter is an outcome too: a line that validates its input and then
+        # says its one fixed sentence is a real function (same ruling, on answer_line).
+        raises_on_param = reads_param and any(isinstance(n, ast.Raise) for n in sub_nodes)
+        only_constant_returns = all_constant and not raises_on_param and (
+            len(set(map(repr, constant_values))) <= 1 or not reads_param
+        )
         executable_nodes = [n for n in sub_nodes if isinstance(n, _EXECUTABLE)]
         return {
             "arg_names": arg_names,

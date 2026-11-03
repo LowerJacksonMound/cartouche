@@ -16,6 +16,7 @@ All notable changes to Cartouche are recorded here. The format follows Keep a Ch
   same literal from every return, or literals chosen without any test that reads a parameter. A classifier that
   returns one of several labels after testing its arguments is a real function. Owner ruling 2026-11-03, on
   the first joint build with Closer: `fxnB_verify_human` was accepted by Closer and called a template here.
+  A raise guarded by a test on a parameter counts as an outcome too (`answer_line`, the pharmacy build).
 - `ct_search` (YouTube) over-fetches three ids per hit wanted, drops any title written in another script before
   fetching anything, reads subtitles for the rest, and returns the hits best spoken moment first. The unsubtitled
   trail behind them in YouTube's order, each marked. Measured on one query: 30 listed, 1 dropped by title, the ten

@@ -370,3 +370,8 @@ class ConstantReturnRule(unittest.TestCase):
 
     def test_labels_chosen_without_reading_a_parameter_are_degenerate(self):
         self.assertTrue(self.info("def f(x):\n    if True:\n        return 'a'\n    return 'b'\n")["only_constant_returns"])
+
+    def test_a_guarded_raise_on_a_parameter_is_an_outcome(self):
+        src = "def f(caller):\n    if 'phone' not in caller:\n        raise ValueError('phone')\n    return 'Corner Drug refill line.'\n"
+        self.assertFalse(self.info(src)["only_constant_returns"])
+        self.assertTrue(self.info("def f(x):\n    if False:\n        raise ValueError('x')\n    return 'a'\n")["only_constant_returns"])
