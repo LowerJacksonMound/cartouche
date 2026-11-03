@@ -303,7 +303,8 @@ class RuleTests(unittest.TestCase):
             "primitive_invariants": {},
         }
         master = CartoucheCompiler(track).compile_cartouche()
-        app = "from lib import fxn_b as do\ndef fxn_a(x):\n    return do(x)\n"
+        # fxn_a never reaches fxn_b in the source; only the sequence below would
+        app = "def fxn_a(x):\n    return x\n"
         lib = "def fxn_b(x):\n    return x + 1\n"
         seq = "def test_both(x):\n    for s in (1, 2):\n        fxn_a(s)\n        fxn_b(s)\n"
         with tempfile.TemporaryDirectory() as tmp:
@@ -319,6 +320,30 @@ class RuleTests(unittest.TestCase):
             report = CartoucheScanner(master).scan_tree(root)
         self.assertEqual(report["broken_edges"], [])
         self.assertTrue(report["is_sealed"], report)
+
+    def test_a_call_through_an_import_alias_is_the_edge(self) -> None:
+        """`from m import f as g` and `g = m.f` name the function (unknowns 03, 2026-11-03)."""
+        track = {
+            "domain_id": "alias",
+            "required_primitives": {"fxn_a": "a", "fxn_b": "b"},
+            "required_edges": [["fxn_a", "fxn_b"]],
+            "glyph_slots": {"fxn_a": 0, "fxn_b": 1},
+            "primitive_params": {"fxn_a": ["x"], "fxn_b": ["x"]},
+            "primitive_invariants": {},
+        }
+        master = CartoucheCompiler(track).compile_cartouche()
+        lib = "def fxn_b(x):\n    return x + 1\n"
+        for app in (
+            "from lib import fxn_b as do\ndef fxn_a(x):\n    return do(x)\n",
+            "import lib\ndo = lib.fxn_b\ndef fxn_a(x):\n    return do(x)\n",
+        ):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / "app.py").write_text(app, encoding="utf-8")
+                (root / "lib.py").write_text(lib, encoding="utf-8")
+                report = CartoucheScanner(master).scan_tree(root)
+            self.assertEqual(report["broken_edges"], [], app)
+            self.assertTrue(report["is_sealed"], report)
 
     def test_missing_params_bare_except_and_floor(self) -> None:
         track = signal_track()

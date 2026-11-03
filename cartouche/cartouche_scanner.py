@@ -31,7 +31,20 @@ class ASTTopologyExtractor(ast.NodeVisitor):
         self.loop_functions: set[str] = set()
         self._name_loads: set[tuple[str, str]] = set()
         self._module_tables: dict[str, set[str]] = {}
+        # 2026-11-03 ruling (unknowns 03): a module-level alias of a function, `from m import f as g` or
+        # `g = m.f`, is the function; a call through the alias is a call to the original.
+        self._aliases: dict[str, str] = {}
         self._current_fxn: str | None = None
+
+    def _real(self, name: str) -> str:
+        return self._aliases.get(name, name)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if self._current_fxn is None:
+            for alias in node.names:
+                if alias.asname and alias.asname != alias.name:
+                    self._aliases[alias.asname] = alias.name
+        self.generic_visit(node)
 
     def reference_edges(self) -> set[tuple[str, str]]:
         """Every (function, name) it loads, with names loaded through a module-level table expanded to the table's."""
@@ -43,9 +56,13 @@ class ASTTopologyExtractor(ast.NodeVisitor):
 
     def visit_Name(self, node: ast.Name) -> None:
         if self._current_fxn is not None and isinstance(node.ctx, ast.Load):
-            self._name_loads.add((self._current_fxn, node.id))
+            self._name_loads.add((self._current_fxn, self._real(node.id)))
 
     def visit_Assign(self, node: ast.Assign) -> None:
+        if self._current_fxn is None and isinstance(node.value, ast.Attribute) and len(node.targets) == 1:
+            target = node.targets[0]
+            if isinstance(target, ast.Name) and target.id != node.value.attr:
+                self._aliases[target.id] = node.value.attr
         if self._current_fxn is None and isinstance(node.value, (ast.Dict, ast.List, ast.Tuple, ast.Set)):
             names = {n.id for n in ast.walk(node.value) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
             for target in node.targets:
@@ -154,7 +171,7 @@ class ASTTopologyExtractor(ast.NodeVisitor):
             elif isinstance(node.func, ast.Attribute):
                 callee_name = node.func.attr
             if callee_name:
-                self.call_edges.add((self._current_fxn, callee_name))
+                self.call_edges.add((self._current_fxn, self._real(callee_name)))
         self.generic_visit(node)
 
 
