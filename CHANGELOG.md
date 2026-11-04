@@ -4,6 +4,11 @@ All notable changes to Cartouche are recorded here. The format follows Keep a Ch
 
 ## [Unreleased]
 
+- README: reconnect after `git pull` as after any edit (the installer prints the same); the three multi-file edge rules
+  (owner, alias, literal getattr) linked by commit with what a precise report carries.
+
+## [0.2.0] - 2026-11-03
+
 ### Added
 - `ct_render`: after the search rounds, a stand-in clip for every line still without a candidate (or the lines named):
   the line spoken by macOS `say` over a title card, written to the line's incoming folder with its sidecar and offered

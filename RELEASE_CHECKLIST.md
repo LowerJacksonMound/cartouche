@@ -6,7 +6,10 @@ a CLI subcommand or an MCP tool changes in a release pass; a pass proves and pac
 
 ## Quiet run (2026-11-03)
 
-- [ ] Quiet run: three new apps of different kinds, fresh session, both gates, zero code changes to this tree. "Release" means first that the app works and runs as expected (Closer accepts, the app is run by hand), and second the signed form (Cartouche sealed). Names and dates here; ledger in ~/ct-live/QUIET_RUN.md.
+- [x] Quiet run: three new apps of different kinds, fresh session, both gates, zero code changes to this tree. "Release" means first that the app works and runs as expected (Closer accepts, the app is run by hand), and second the signed form (Cartouche sealed). Names and dates here; ledger in ~/ct-live/QUIET_RUN.md.
+      2026-11-03 passed: counter, connect4, wordfreq through both gates with zero edits to either tree (count 3, Cartouche d950b28,
+      Closer 657c2c3); count 4 the same day cold-ran the release fixes, four of four (24655f3 / 2a5196a); connect4 re-ticketed
+      and accepted under the owner rule (b6a4bbe). The ledger is kept privately by the owner.
 
 ## Any change
 
