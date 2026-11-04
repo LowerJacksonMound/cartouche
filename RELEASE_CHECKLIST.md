@@ -112,4 +112,14 @@ edited after release.
 
 ## Pass 2026-10-23, rung 3 (prepared)
 
-- [x] Full-history scan clean (secrets, personal paths); author email rewritten to the GitHub no-reply address before the flip. Repository READY for public: the flip itself is the owner's action (`gh repo edit --visibility public --accept-visibility-change-consequences`), recorded below when done. Rung 2 (invited testers) skipped by decision: the prerelease label and issue tracker take its place.
+- [x] Full-history scan clean (secrets, personal paths). Author email: 6 commits carry the GitHub no-reply address, the rest the owner's GitHub email; the owner ruled 2026-11-04 that it stays. Repository READY for public: the flip itself is the owner's action (`gh repo edit --visibility public --accept-visibility-change-consequences`), recorded below when done. Rung 2 (invited testers) skipped by decision: the prerelease label and issue tracker take its place.
+
+## Pass 2026-11-04, rung 1 and rung 3 (docs only; no rule, hash, lock, CLI or tool changed)
+
+- [x] Tag `v0.2.0` re-pointed for the last time while private, to the head that carries README "Reporting a problem",
+      SECURITY.md (contact LowerJacksonMound@proton.me) and the CHANGELOG fold. Draft prerelease "Cartouche 0.2.0" on GitHub.
+- [x] Clean-clone rehearsal, 2026-11-04: clone into a scratch folder, HOME empty, QUICKSTART steps 1-6, hold and the live
+      page followed as pasted; every output line identical, lock `cd093843aefe1778…`; `selftest` PASS; plants 9 PASS / 0 FAIL.
+- [x] Repo settings: wiki, discussions, projects off; issues on. Private vulnerability reporting is offered by GitHub only
+      on a public repo: first action after the flip.
+- [ ] The friend's Mac run is post-flip; a finding is 0.2.1, no tag moves.
