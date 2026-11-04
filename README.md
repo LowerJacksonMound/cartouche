@@ -112,6 +112,19 @@ command.
 Release candidate, 2026-10-23. Self-test: `cartouche selftest`, or the plants under `plants/run_all.sh`.
 The unit tests are `python3 -m unittest discover -s cartouche/tests` from this folder (133 tests on 2026-11-02).
 
+Multi-file edges are the newest part of the scanner (2026-11-03) and the likeliest first bug report ("my app with
+`import as` or `getattr` does not seal"). Three rules decide them; each commit message states the rule:
+
+- [b6a4bbe](https://github.com/LowerJacksonMound/cartouche/commit/b6a4bbe): a sequence or loop owner must be defined
+  in the caller's own file; a test that sequences both ends does not satisfy the edge.
+- [1874ec5](https://github.com/LowerJacksonMound/cartouche/commit/1874ec5): a module-level alias (`from m import f as g`,
+  or `g = m.f`) names the function; a call through it is the edge.
+- [d79c9aa](https://github.com/LowerJacksonMound/cartouche/commit/d79c9aa): `getattr(module_or_self, "literal")(...)`
+  resolves to that function and is the edge; a computed name is not followed and reports `skew`.
+
+The runs that drove them are in the proving ledger (the separate `ct-live` repo): `stress_run/RUN.md`, case 05, and
+`unknowns/RUN.md`, case 03. A report should carry the `summary` line, the lock sha, and the `ct_look` rows.
+
 ## Install
 
 Nothing to install beyond Python 3.9. Clone or copy this folder, then either
@@ -130,6 +143,7 @@ To drive it from Claude Code, register the MCP server once, at user scope:
 
 A Claude Code session starts that server once and does not reload it. After any edit to this folder, run
 `/mcp` in the session and reconnect `cartouche` (or start a new session) before trusting a verdict.
+The same holds after `git pull`: the session's server is still the old code until you reconnect.
 
 The page: `python3 -m cartouche page --request SPEC` prints `page=http://127.0.0.1:8790/` and serves it until you
 stop it; `--port N` moves it. Every `ct_watch`, `ct_look`, `ct_hold` and `ct_stop` answer carries a one-sentence
