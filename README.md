@@ -170,4 +170,4 @@ Issues are welcome; this project does not take outside code.
 ## License
 
 PolyForm Noncommercial 1.0.0: read, run and modify freely for noncommercial purposes; commercial use needs a license
-from the author (contact LowerJacksonMound through GitHub). See LICENSE.
+from the author (LowerJacksonMound@proton.me). See LICENSE.

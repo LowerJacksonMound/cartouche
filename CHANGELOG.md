@@ -40,7 +40,7 @@ All notable changes to Cartouche are recorded here. The format follows Keep a Ch
 - `ct_offer` (YouTube) refuses a video whose original title is in another script, with the title in the reason.
   The search listing can show a translated title; the original is only read at offer time.
 
-## [0.2.0] - 2026-10-23
+## [0.1.0] - 2026-10-23
 
 ### Added
 - Gather, the one AI step: MCP tools `ct_chart` (check and save a chart drafted from a plain request), `ct_wanted`
