@@ -122,8 +122,7 @@ Multi-file edges are the newest part of the scanner (2026-11-03) and the likelie
 - [d79c9aa](https://github.com/LowerJacksonMound/cartouche/commit/d79c9aa): `getattr(module_or_self, "literal")(...)`
   resolves to that function and is the edge; a computed name is not followed and reports `skew`.
 
-The runs that drove them are in the proving ledger (the separate `ct-live` repo): `stress_run/RUN.md`, case 05, and
-`unknowns/RUN.md`, case 03. A report should carry the `summary` line, the lock sha, and the `ct_look` rows.
+A report should carry the `summary` line, the lock sha, and the `ct_look` rows.
 
 ## Install
 
