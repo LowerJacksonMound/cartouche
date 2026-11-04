@@ -122,7 +122,7 @@ Multi-file edges are the newest part of the scanner (2026-11-03) and the likelie
 - [d79c9aa](https://github.com/LowerJacksonMound/cartouche/commit/d79c9aa): `getattr(module_or_self, "literal")(...)`
   resolves to that function and is the edge; a computed name is not followed and reports `skew`.
 
-A report should carry the `summary` line, the lock sha, and the `ct_look` rows.
+A report should carry the `summary` line, the lock sha, and the `ct_look` rows (see Reporting a problem).
 
 ## Install
 
@@ -161,6 +161,13 @@ press release once more and the new lock is written. `ct_watch` on the old lock 
 - `MCP.md`: the stdio server, the ten tools (four for the watch, six for gather), their arguments and refusals.
 - `BROLL.md`: the dictionary shelf: seek, fill, check-off, reuse.
 
+## Reporting a problem
+
+Open an issue on this repository. A precise report carries the `summary` line, the lock sha, and the `ct_look` rows
+(file, function, lines, fault, detail). A security problem goes through SECURITY.md, not an issue.
+Issues are welcome; this project does not take outside code.
+
 ## License
 
-PolyForm Noncommercial 1.0.0: read, run and modify freely for noncommercial purposes; commercial use needs a license from the author. See LICENSE.
+PolyForm Noncommercial 1.0.0: read, run and modify freely for noncommercial purposes; commercial use needs a license
+from the author (contact LowerJacksonMound through GitHub). See LICENSE.
