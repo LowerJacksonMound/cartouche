@@ -166,6 +166,7 @@ press release once more and the new lock is written. `ct_watch` on the old lock 
 Open an issue on this repository. A precise report carries the `summary` line, the lock sha, and the `ct_look` rows
 (file, function, lines, fault, detail). A security problem goes through SECURITY.md, not an issue.
 Issues are welcome; this project does not take outside code.
+Issues are read; there is no schedule for replies or fixes. Verified 2026-11-05 on a fresh clone on an Apple Silicon Mac under Python 3.9 (macOS's own), 3.13 and 3.14; other Macs are untested.
 
 ## License
 
