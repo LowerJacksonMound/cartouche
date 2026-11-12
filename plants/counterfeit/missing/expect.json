@@ -1,1 +1,1 @@
-{"sealed": false, "faults": ["missing", "template"], "details": ["MISSING_FUNCTION", "HOLLOW_STUB"], "functions": ["fxnD_voicemail_fallback", "fxnE_confirm_slot"], "reason": "scan", "note": "Voicemail is absent and confirm is a pass stub. Missing: the Eye is not whole."}
+{"sealed": false, "faults": ["missing"], "details": ["MISSING_FUNCTION"], "functions": ["fxnD_voicemail_fallback"], "reason": "scan", "note": "Voicemail is absent and confirm is a pass stub. Missing: the function is not there. The stub is CLOSER's (Ian 2026-11-11), not a Cartouche row."}

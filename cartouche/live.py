@@ -19,7 +19,7 @@ from cartouche.symbols import mark_cartouche
 SEALED = "sealed"
 SKEW_WORD = "skew"
 # when one function has more than one fault, the row names the one to fix first
-_RANK = {word: index for index, word in enumerate(("missing", "template", "locked", "skew"))}
+_RANK = {word: index for index, word in enumerate(("missing", "locked", "skew"))}
 _RING_ON, _RING_OFF = "#10b981", "#30363d"
 
 
@@ -92,7 +92,8 @@ def live_view(
             elif issue is not None:
                 word = issue["fault"]
             else:
-                word = SEALED if fidelity == 1.0 and name not in broken else (SKEW_WORD if name in broken else "template")
+                # no row: sealed. A stub or fake-shaped body is CLOSER's (2026-11-11); fidelity still draws the sign.
+                word = SKEW_WORD if name in broken else SEALED
             band_sealed = band_sealed and word == SEALED
             svg = (
                 project_sign(function["svg"], fidelity, name in broken)

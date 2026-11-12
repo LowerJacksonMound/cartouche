@@ -113,7 +113,7 @@ The eye is one sign, not the dictionary. A part with one signal lock takes a one
 
 `cartouche image spec.json clip_dictionary.json -o image.json` draws one ring per part. The seal is that part's sign. The signs inside are the functions, in order. The drawing does not name them. An open shelf writes no image.
 
-The scan has four defects: template, locked, missing, and skew. They apply to whichever sign is selected. A sign is sealed or it is not: there is no in-between grade. A check that cannot tell is let through, never a fault. (Owner ruling 2026-10-24: hazy is retired. A constant return or a swallowing bare except is template; locked parameters that are gone are missing; a short body alone is let through.) No sample request is loaded.
+The scan has three defects: locked, missing, and skew. They apply to whichever sign is selected. A sign is sealed or it is not: there is no in-between grade. A check that cannot tell is let through, never a fault. A hollow or fake-shaped body and wrong parameters are CLOSER's to refuse; Cartouche reports missing, skew and locked. (Owner ruling 2026-11-11, one owner per fault kind: template and missing parameters moved to CLOSER, whose judge runs the function on the locked checks. Ruling 2026-10-24: hazy is retired; a short body alone is let through.) No sample request is loaded.
 
 When the projection has a defect, the monitor says so and marks the tab. If you allow notifications, it also sends one. A clean projection does not. The same defect is not sent twice.
 

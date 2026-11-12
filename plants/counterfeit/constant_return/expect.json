@@ -1,1 +1,0 @@
-{"sealed": false, "faults": ["template"], "details": ["DEGENERATE_CONSTANT_RETURN"], "functions": ["fxnB_verify_human"], "reason": "scan", "note": "verify_human is `return True`: a fake-shaped body, so that sign is not sealed (template). A short body alone is let through."}

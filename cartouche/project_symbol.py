@@ -1,10 +1,10 @@
-"""The same five defects, on whatever sign was selected. The phone chart is not special."""
+"""The same three defects, on whatever sign was selected. The phone chart is not special."""
 
 from __future__ import annotations
 
 
 def project_sign(svg: str, fidelity: float, broken: bool) -> str:
-    """Sealed, or not: template, locked, missing, skew. The drawing underneath can be any sign."""
+    """Sealed, or not: locked, missing, skew. The drawing underneath can be any sign."""
 
     fidelity = 1.0 if fidelity >= 1.0 else 0.0  # sealed or not: no in-between drawing (owner ruling 2026-10-24)
     head, rest = svg.split(">", 1)
@@ -35,40 +35,37 @@ def project_sign(svg: str, fidelity: float, broken: bool) -> str:
     return f"{head}>{defs}{ghost}{live}</svg>"
 
 
-# ---- the five defect words ---------------------------------------------------------
+# ---- the three defect words --------------------------------------------------------
 #
-# INTENT.md: "The scan has five defects: template, locked, hazy, missing, and skew." Each word,
-# on a cartouche symbol, says how the function that symbol represents is incorrect. A reported
-# issue carries exactly one of them as `fault` (a file that does not parse is `SYNTAX`, as
-# MCP.md says). The scanner's own codes stay on the row as `detail`, so nothing is lost.
+# INTENT.md: "The scan has three defects: locked, missing, and skew." Each word, on a cartouche
+# symbol, says how the function that symbol represents is incorrect. A reported issue carries
+# exactly one of them as `fault` (a file that does not parse is `SYNTAX`, as MCP.md says). The
+# scanner's own codes stay on the row as `detail`, so nothing is lost. One owner per fault kind
+# (Ian, 2026-11-11): a hollow or fake-shaped body (template) and wrong parameters are CLOSER's
+# to refuse, since its judge runs the function on the locked checks; the scanner still reports
+# them as diagnostics, and issues_of lets them through.
 
-TEMPLATE = "template"  # the function is a hollow stub: the signature, no body
 LOCKED = "locked"  # the request was edited after release; the spec no longer hashes to the lock
 MISSING = "missing"  # the function is not there
 SKEW = "skew"  # a required edge is gone: the function never reaches the next one
 SYNTAX = "SYNTAX"  # the file does not parse
 
-DEFECTS: tuple[str, ...] = (TEMPLATE, LOCKED, MISSING, SKEW)
+DEFECTS: tuple[str, ...] = (LOCKED, MISSING, SKEW)
 FAULT_WORDS: frozenset[str] = frozenset(DEFECTS) | {SYNTAX}
 
 _WARRANT_DEFECT: dict[str, str] = {
     "CARTOUCHE_MISSING_GLYPH": MISSING,
-    "CARTOUCHE_COUNTERFEIT_STUB": TEMPLATE,
     "CARTOUCHE_TOPOLOGY_BREAK": SKEW,
-    "CARTOUCHE_MALFORMED_GLYPH": TEMPLATE,
     "CARTOUCHE_UNPARSED": SYNTAX,
 }
 
 
 def defect_of(warrant_type: str | None, faults: list[str] | None = None) -> str | None:
-    """The one word for a scanner warrant, or None for one the scan does not recognize (let through).
+    """The one word for a scanner warrant, or None for one Cartouche does not own (let through).
 
-    A malformed sign is template (a fake-shaped body: constant returns, a swallowing bare except) unless the
-    locked parameters are gone, which is missing: the function as locked is not there.
+    Missing, skew and SYNTAX are Cartouche's; a stub, a fake-shaped body and wrong parameters are CLOSER's.
     """
 
-    if warrant_type == "CARTOUCHE_MALFORMED_GLYPH" and any(str(f).startswith("MISSING_PARAMS") for f in faults or []):
-        return MISSING
     return _WARRANT_DEFECT.get(warrant_type or "")
 
 
@@ -82,24 +79,17 @@ def issues_of(report: dict | None) -> list[dict]:
         kind = warrant.get("warrant_type")
         fault = defect_of(kind, warrant.get("faults"))
         if fault is None:
-            continue  # not a fault the scan recognizes: let through
+            continue  # not Cartouche's fault (a stub or a fake-shaped body is CLOSER's): let through
         if kind == "CARTOUCHE_MISSING_GLYPH":
             function = warrant.get("missing_primitive")
             detail = "MISSING_FUNCTION"
-        elif kind == "CARTOUCHE_COUNTERFEIT_STUB":
-            function = warrant.get("missing_primitive")
-            detail = "HOLLOW_STUB"
         elif kind == "CARTOUCHE_TOPOLOGY_BREAK":
             edge = warrant.get("broken_edge") or [None, None]
             function = edge[0]
             detail = f"TOPOLOGY_BREAK({edge[0]}->{edge[1]})"
-        elif kind == "CARTOUCHE_UNPARSED":
+        else:
             function = None
             detail = SYNTAX
-        else:
-            function = warrant.get("malformed_primitive")
-            codes = warrant.get("faults") or []
-            detail = ", ".join(codes) if codes else str(kind)
         rows.append(
             {
                 "file": warrant.get("target_file"),

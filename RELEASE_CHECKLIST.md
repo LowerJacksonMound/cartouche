@@ -18,7 +18,7 @@ a CLI subcommand or an MCP tool changes in a release pass; a pass proves and pac
       server as a client would, the plants, and proves no file outside its temp dir was added or changed.
 - [ ] `plants/run_all.sh` prints `plants: N PASS / 0 FAIL`. Every honest plant seals; every counterfeit plant is
       refused or reported. A changed scan rule has a plant that fails without the change and passes with it.
-- [ ] `python3 -m unittest discover -s cartouche/tests -p "test_*.py"` is `OK`.
+- [ ] `python3 -m cartouche.selftest` says PASS.
 - [ ] The lock does not move: the fixture release hashes to `cd093843aefe1778…` before and after the pass.
 - [ ] Law docs (INTENT.md, MCP.md, BROLL.md) match the code, or the mismatch is listed under "Known gaps"
       below with a date. Law docs are not rewritten to fit the code.

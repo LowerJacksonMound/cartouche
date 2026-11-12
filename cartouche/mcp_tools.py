@@ -9,6 +9,7 @@ from typing import Any
 
 from cartouche.hold import hold_tree
 from cartouche.project_symbol import LOCKED, issues_of  # noqa: F401  (issues_of is this module's door too)
+from cartouche.hold import closer_state, closer_wire
 
 NO_TARGET = "no target — call ct_watch with the spec, the release, and the build path"
 
@@ -57,8 +58,11 @@ class Watch:
         self.spec_path = spec_path
         self.contract_path = contract_path
         self.target = target_path
-        looked = self._from_probe(probe, target_path)
+        # the wire: the signed release's hashed intent becomes CLOSER's approved plan for this target
+        wired = closer_wire(contract_data, target_path)
+        looked = self._from_probe(probe, target_path, contract_data)
         looked["bound"] = True
+        looked["closer_plan_written"] = wired
         return looked
 
     def look(self) -> dict[str, Any]:
@@ -74,7 +78,7 @@ class Watch:
             raise RuntimeError("look rewrote the spec")
         if self.contract_path.read_text(encoding="utf-8") != before_contract:
             raise RuntimeError("look rewrote the release")
-        looked = self._from_probe(probe, self.target)
+        looked = self._from_probe(probe, self.target, contract_data)
         looked["bound"] = True
         return looked
 
@@ -99,17 +103,13 @@ class Watch:
             return {"error": f"no such release: {contract_path}"}
         before_spec = spec_path.read_text(encoding="utf-8")
         before_contract = contract_path.read_text(encoding="utf-8")
-        probe = hold_tree(
-            json.loads(before_spec),
-            json.loads(before_contract),
-            target_path,
-            spec_path.parent,
-        )
+        contract_data = json.loads(before_contract)
+        probe = hold_tree(json.loads(before_spec), contract_data, target_path, spec_path.parent)
         if spec_path.read_text(encoding="utf-8") != before_spec:
             raise RuntimeError("hold rewrote the spec")
         if contract_path.read_text(encoding="utf-8") != before_contract:
             raise RuntimeError("hold rewrote the release")
-        looked = self._from_probe(probe, target_path)
+        looked = self._from_probe(probe, target_path, contract_data)
         looked["bound"] = self.bound()
         return looked
 
@@ -165,8 +165,7 @@ class Watch:
         report = probe.get("scan") or {}
         waiting = bool(probe.get("waiting") or report.get("waiting"))
         issues = [] if waiting else issues_of(report)
-        return (
-{
+        return {
             "sealed": bool(probe.get("is_sealed")) and not issues,
             "waiting": waiting,
             "scanned": bool(probe.get("scanned")) and not waiting,
@@ -177,11 +176,20 @@ class Watch:
             "open": len(issues),
             "issues": issues,
         }
-        )
 
     @staticmethod
-    def _from_probe(probe: dict[str, Any], target: Path) -> dict[str, Any]:
+    def _from_probe(probe: dict[str, Any], target: Path, contract: dict[str, Any] | None = None) -> dict[str, Any]:
+        """The rows, plus what CLOSER's own files say: a plan that drifted from the release, and every hole."""
+
         looked = Watch._rows(probe, target)
+        state = closer_state(contract or {}, target)
+        looked["closer"] = None
+        if state is not None:
+            looked["closer"] = {"sha256": state["sha256"], "plan": state["plan"], "holes": state["holes"]}
+            if looked["reason"] == "scan" and state["issues"]:
+                looked["issues"] = list(looked["issues"]) + list(state["issues"])
+                looked["open"] = len(looked["issues"])
+                looked["sealed"] = False
         looked["summary"] = summary_of(looked)
         return looked
 
@@ -199,12 +207,14 @@ def summary_of(looked: dict[str, Any]) -> str:
     if not issues:
         return f"Sealed: every locked line and edge is in {where}."
     named = "; ".join(
-        f"{i['fault']} in {i['function'] or Path(str(i['file'])).name}"
+        f"{i['fault']} in {i['function'] or (Path(str(i['file'])).name if i.get('file') else i['detail'])}"
         + (f" line {i['lines'][0]}" if i.get("lines") else "")
         for i in issues[:3]
     )
     more = f" and {len(issues) - 3} more" if len(issues) > 3 else ""
-    return f"Not sealed: {len(issues)} issue{'s' if len(issues) != 1 else ''}: {named}{more}."
+    holes = sum(1 for i in issues if str(i.get("detail", "")).startswith("HOLE("))
+    tail = f", {holes} CLOSER hole{'s' if holes != 1 else ''}" if holes else ""
+    return f"Not sealed: {len(issues)} issue{'s' if len(issues) != 1 else ''}: {named}{more}{tail}."
 
 
 WATCH = Watch()
@@ -214,7 +224,9 @@ TOOLS: dict[str, dict[str, Any]] = {
         "description": (
             "Bind this server to one build: the spec, the signed release, and the file or "
             "directory being written. Refuses an unsigned release or a spec that no longer "
-            "hashes to it. Does not write either file, and does not start CLOSER or CodeRadar."
+            "hashes to it. Does not write either file, and does not start CLOSER or CodeRadar. "
+            "A release with closer contracts is checked against CLOSER's approved plan and its holes; "
+            "send the release's contracts to cl_plan verbatim."
         ),
         "inputSchema": {
             "type": "object",
@@ -233,8 +245,9 @@ TOOLS: dict[str, dict[str, Any]] = {
     "ct_look": {
         "description": (
             "Scan the bound build once. Each issue names the file, the function, the lines, "
-            "and the fault: one of template, locked, missing, skew; the scanner's codes "
-            "are in detail. A directory is one scan. A file that does not parse is a SYNTAX "
+            "and the fault: one of locked, missing, skew; the scanner's codes are in detail. "
+            "A hollow or fake-shaped body and wrong parameters are CLOSER's to refuse; "
+            "Cartouche reports missing, skew and locked. A directory is one scan. A file that does not parse is a SYNTAX "
             "fault and does not end the watch. Nothing written yet is waiting, with an empty "
             "issue list. Does not rewrite the release."
         ),

@@ -1,1 +1,1 @@
-{"sealed": false, "faults": ["template"], "details": ["HOLLOW_STUB"], "functions": ["fxnA_dial", "fxnB_verify_human", "fxnC_transmit_request", "fxnE_confirm_slot", "fxnD_voicemail_fallback"], "reason": "scan", "note": "Every signature, no body. Template: five hollow stubs."}
+{"sealed": false, "faults": ["skew"], "details": ["TOPOLOGY_BREAK"], "reason": "scan", "note": "Every signature, no body. The hollow stub itself is CLOSER's (Ian 2026-11-11) and is a diagnostic only; but with no calls every required edge is gone, and that is skew, which is Cartouche's."}

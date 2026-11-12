@@ -8,6 +8,8 @@ import json
 from pathlib import Path
 from typing import Any, Callable
 
+from cartouche.project_symbol import issues_of
+
 _EXECUTABLE = (
     ast.Call,
     ast.If,
@@ -510,7 +512,8 @@ class CartoucheScanner:
             + len(broken_edges),
             2,
         )
-        is_sealed = (projection_residual == 0.0) and (active_bitmask == expected_mask)
+        # sealed is "no issue row" (Ian 2026-11-11): a stub or fake-shaped body is CLOSER's and stays a diagnostic
+        is_sealed = not issues_of({"closer_warrants": warrants})
         return {
             "domain_id": self.cartouche["domain_id"],
             "cartouche_sha256": self.cartouche["cartouche_sha256"],

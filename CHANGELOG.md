@@ -4,6 +4,17 @@ All notable changes to Cartouche are recorded here. The format follows Keep a Ch
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-11
+
+### Changed
+- One owner per fault kind (Ian, 2026-11-11): the fault `template` (hollow stub, constant return, swallowing bare
+  except) and missing parameters are CLOSER's to refuse, since its judge runs the function on the locked checks.
+  `ct_look` reports `locked`, `missing`, `skew` and `SYNTAX` only, and a build with no issue row is sealed. The scan
+  report and the live page still show `HOLLOW_STUB`, `DEGENERATE_CONSTANT_RETURN`, `SWALLOWED_BARE_EXCEPT` and
+  `MISSING_PARAMS` as diagnostics.
+- The Watch answer carries CLOSER's own rows: an approved plan that drifted from the release is `locked`
+  (`CONTRACTS`), and every open hole is `missing` (`HOLE(<kind>)`).
+
 ## [0.2.0] - 2026-11-04
 
 ### Added

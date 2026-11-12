@@ -22,9 +22,9 @@ re-lock.
    the master cartouche: the hash of the signed locks. It is locked before any agent writes and does not
    move for the whole build.
 7. The build agent calls `ct_watch`, then `ct_look` after each write, then `ct_stop` when it is done. Each
-   issue names the file, the function, the lines, and the fault: one of the four defect words, `template`,
+   issue names the file, the function, the lines, and the fault: one of the three defect words,
    `locked`, `missing`, `skew` (`SYNTAX` for a file that does not parse), with the scanner's codes
-   in `detail`. You hand the issue to the build agent. Cartouche does not send it.
+   in `detail`. A hollow or fake-shaped body and wrong parameters are CLOSER's to refuse; Cartouche reports missing, skew and locked. You hand the issue to the build agent. Cartouche does not send it.
 8. `ct_stop` answers `sealed: true` only when the tree is the locked intent: residual `0.00` and every
    required edge present. Anything else is `sealed: false` with the open issues, and the release is not
    rewritten.
@@ -39,7 +39,7 @@ One local stdio process, `cartouche-mcp.sh`. No port. No extra package. Python 3
 | Tool | One line | Refuses |
 |---|---|---|
 | `ct_watch(spec, contract, target)` | Binds one build: the request, the release, and one Python file or a directory. Writes neither file. | a missing spec, a missing release, a release that is not signed off (`the request is not signed off`), a spec whose hash is no longer the release, and a second target while one is bound (`ct_stop first`). |
-| `ct_look()` | One scan of the bound build. Returns `issues`; each row has `file`, `function`, `lines`, `fault` (one of `template`, `locked`, `missing`, `skew`), `detail`, `directive`. A directory is one scan. A file that does not parse is `SYNTAX` and the rest is still scored. A target not written yet is `waiting: true`, not an issue. | any call before `ct_watch` (`no target — call ct_watch with the spec, the release, and the build path`). |
+| `ct_look()` | One scan of the bound build. Returns `issues`; each row has `file`, `function`, `lines`, `fault` (one of `locked`, `missing`, `skew`), `detail`, `directive`. A directory is one scan. A file that does not parse is `SYNTAX` and the rest is still scored. A target not written yet is `waiting: true`, not an issue. | any call before `ct_watch` (`no target — call ct_watch with the spec, the release, and the build path`). |
 | `ct_stop()` | Ends the watch, returns `stopped`, `sealed`, and the open `issues`, and drops the bind. The release is not written. The process stays up. | nothing; with nothing bound it says nothing is being watched. |
 | `ct_hold(spec, contract, target)` | The same comparison, once, with no bind. | the same as `ct_watch`. |
 
@@ -110,7 +110,7 @@ command.
 ## Status
 
 Release candidate, 2026-10-23. Self-test: `cartouche selftest`, or the plants under `plants/run_all.sh`.
-The unit tests are `python3 -m unittest discover -s cartouche/tests` from this folder (133 tests on 2026-11-02).
+There is no unit test suite (Ian, 2026-11-11): the check is `python3 -m cartouche.selftest`, which runs the source end to end and the plants.
 
 Multi-file edges are the newest part of the scanner (2026-11-03) and the likeliest first bug report ("my app with
 `import as` or `getattr` does not seal"). Three rules decide them; each commit message states the rule:

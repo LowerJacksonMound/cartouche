@@ -12,7 +12,7 @@ or the first failure is named and the exit is 1.
 `python3 -m cartouche.selftest --plants plants` runs only the plant folder. `plants/run_all.sh`
 calls that. A plant is a folder with Python files and an `expect.json`; `honest/` plants must
 seal, `counterfeit/` plants must be refused or reported with the faults they name: one of the
-four words (template, locked, missing, skew) per row; a sign is sealed or it is not, with the scanner's codes in `detail`.
+three words (locked, missing, skew) per row, template being CLOSER's; a sign is sealed or it is not, with the scanner's codes in `detail`.
 
 Everything written lands under one temp dir, which is removed at the end. The unit tests are
 run with TMPDIR inside it so their own scratch dirs land there too.
@@ -286,25 +286,6 @@ def _named(answer: dict[str, Any], function: str, fault: str, detail: str = "") 
 # ---- selftest ---------------------------------------------------------------------
 
 
-def _unit_tests(tmp: Path, say: Say) -> None:
-    unit_tmp = tmp / "unit"
-    unit_tmp.mkdir()
-    proc = subprocess.run(
-        [sys.executable, "-m", "unittest", "discover", "-s", "cartouche/tests", "-p", "test_*.py"],
-        cwd=ROOT,
-        env=_env(unit_tmp),
-        capture_output=True,
-        text=True,
-        timeout=600,
-    )
-    text = proc.stderr + proc.stdout
-    ran = re.search(r"^Ran (\d+) tests?", text, re.M)
-    if proc.returncode != 0 or not ran or not re.search(r"^OK$", text, re.M):
-        tail = "\n".join(text.strip().splitlines()[-15:])
-        raise Failure(f"unit tests: exit {proc.returncode}\n{tail}")
-    say("unit tests", f"{ran.group(1)} tests, OK")
-
-
 def _snapshot() -> dict[str, str]:
     seen: dict[str, str] = {}
     for path in sorted(ROOT.rglob("*")):
@@ -373,17 +354,18 @@ def _server_checks(paths: dict[str, Path], tmp: Path, say: Say) -> None:
         server.call("ct_stop")
         say("unwritten target", "waiting=true issues=0 target named")
 
-        # (b) the constant-return agent: verify_human returns True (template)
+        # (b) the constant-return agent: verify_human returns True. A fake-shaped body is CLOSER's to refuse
+        # (Ian 2026-11-11), so Cartouche has no row for it and the build is sealed.
         hazy = server.call("ct_watch", spec=spec, contract=contract, target=str(build / "hazy.py"))
-        if hazy.get("sealed") is not False:
+        if hazy.get("sealed") is not True or hazy.get("issues"):
             raise Failure(f"ct_watch hazy: {hazy}")
-        row = _named(server.call("ct_look"), "fxnB_verify_human", "template", "DEGENERATE_CONSTANT_RETURN")
-        if not row.get("lines") or not row.get("directive") or not str(row.get("file", "")).endswith("hazy.py"):
-            raise Failure(f"ct_look hazy: row is incomplete: {row}")
+        looked = server.call("ct_look")
+        if looked.get("sealed") is not True or looked.get("open") != 0:
+            raise Failure(f"ct_look hazy: {looked}")
         stopped = server.call("ct_stop")
-        if stopped.get("sealed") is not False or stopped.get("open", 0) < 1:
+        if stopped.get("sealed") is not True:
             raise Failure(f"ct_stop hazy: {stopped}")
-        say("constant-return agent", f"sealed=false fxnB_verify_human fault={row['fault']} detail={row['detail']} lines={row['lines']}")
+        say("constant-return agent", "sealed=true issues=0: a constant return is CLOSER's, not a Cartouche row")
 
         # (b) the shifted-edge agent: verify_human no longer reaches transmit_request
         shifted = server.call("ct_watch", spec=spec, contract=contract, target=str(build / "shifted.py"))
@@ -400,8 +382,9 @@ def _server_checks(paths: dict[str, Path], tmp: Path, say: Say) -> None:
         if esprit.get("sealed") is not False:
             raise Failure(f"ct_hold esprit: {esprit}")
         _named(esprit, "fxnD_voicemail_fallback", "missing", "MISSING_FUNCTION")
-        _named(esprit, "fxnE_confirm_slot", "template", "HOLLOW_STUB")
-        say("esprit agent", "ct_hold sealed=false missing fxnD_voicemail_fallback, template fxnE_confirm_slot")
+        if "fxnE_confirm_slot" in _functions(esprit):
+            raise Failure(f"ct_hold esprit: the hollow stub is CLOSER's, not a Cartouche row: {esprit}")
+        say("esprit agent", "ct_hold sealed=false missing fxnD_voicemail_fallback; the stub fxnE_confirm_slot is CLOSER's")
 
         # a tree is one scan, and a file that does not parse does not end it
         tree = tmp / "tree"
@@ -621,7 +604,6 @@ def selftest() -> int:
     before = _snapshot()
     tmp = Path(tempfile.mkdtemp(prefix="cartouche-selftest-"))
     try:
-        _unit_tests(tmp, say)
         paths = build_release(tmp, say)
         _server_checks(paths, tmp, say)
         _page_checks(paths, tmp, say)

@@ -9,6 +9,7 @@ from typing import Any
 from cartouche.cartouche_compiler import CartoucheCompiler
 from cartouche.clip_library import LibraryFiller
 from cartouche.signal_stitcher import SignalStitcher
+import hashlib
 
 _USABLE = {"approved", "reused"}
 
@@ -55,4 +56,24 @@ def release(
         "clips": chosen,
         "files_present": bool(chosen) and all(clip["file_present"] for clip in chosen),
         "rendered": False,
+        "closer": closer_lock(spec_data.get("closer")),
     }
+
+
+def closer_lock(closer: dict[str, Any] | None) -> dict[str, Any] | None:
+    """The spec's CLOSER block with its plan hash, computed as closer_mcp.plan does. None when the spec has none."""
+
+    if closer is None:
+        return None
+    contracts = []
+    for i, c in enumerate(closer.get("contracts") or []):
+        if not isinstance(c, dict) or not {"file", "name", "params", "checks"} <= set(c):
+            raise ValueError(f"contract {i}: needs file, name, params and checks")
+        contracts.append({**c, "kind": c.get("kind", "def")})
+    rec = {
+        "intent": str(closer.get("intent", "")).strip(),
+        "expectation": str(closer.get("expectation", "")).strip(),
+        "contracts": contracts,
+    }
+    sha = hashlib.sha256(json.dumps(rec, sort_keys=True).encode()).hexdigest()
+    return {**closer, **rec, "sha256": sha}
